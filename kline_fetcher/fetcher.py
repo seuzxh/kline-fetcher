@@ -11,7 +11,7 @@ import requests
 import yaml
 
 _PACKAGE_DIR = os.path.dirname(os.path.abspath(__file__))
-_DEFAULT_CONFIG = os.path.join(_PACKAGE_DIR, "..", "config", "kline_config.yaml")
+_DEFAULT_CONFIG = os.path.join(_PACKAGE_DIR, "config", "kline_config.yaml")
 
 PRICE_SCALE = 1_000_000
 TURNOVER_SCALE = 10000

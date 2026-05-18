@@ -23,4 +23,4 @@ kline-download = "kline_fetcher.download:main"
 include = ["kline_fetcher*"]
 
 [tool.setuptools.package-data]
-kline_fetcher = ["../config/*.yaml"]
+kline_fetcher = ["config/*.yaml"]
