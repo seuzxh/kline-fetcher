@@ -30,9 +30,11 @@ data = fetcher.fetch_day_kline("600519", count=10)
 - 大范围日 K 自动分段下载（>1500 条自动拆分）
 
 **限制**：
-- 仅支持个股行情，不支持概念板块
 - 默认前复权（`cqtype=1`），早期日期可能出现负价格（多次分红导致，属正常现象）
 - API 单次请求最多返回 1500 条数据
+
+**扩展功能**：
+- 支持概念板块数据获取（详见「概念板块相关方法」）
 
 ## 目录结构
 
@@ -42,6 +44,9 @@ data_v2/                          # 包项目根目录
 ├── README.md                     # 本文档
 ├── config/                       # 默认配置文件
 │   └── kline_config.yaml
+├── tests/                        # 测试文件目录
+│   ├── __init__.py               # 测试包文件
+│   └── test_concept_plates.py    # 概念板块功能测试
 └── kline_fetcher/                # Python 包目录
     ├── __init__.py               # 导出公共 API
     ├── fetcher.py                # KLineFetcher — API 请求封装
@@ -244,6 +249,142 @@ def get_stock_info(self, code: str, market: Optional[int] = None) -> Optional[Di
 ```
 
 **返回值**：`{"code": "600519", "name": "贵州茅台", "market_sn": 1}`
+
+---
+
+### 概念板块相关方法
+
+#### `get_all_concept_plates` — 获取全部概念板块
+
+```python
+def get_all_concept_plates(self) -> Optional[List[Dict]]
+```
+
+**返回值**：概念板块列表，每条记录格式：
+
+```python
+[
+    {
+        "code": "994639",
+        "name": "高带宽内存",
+        "market": 44,
+        "price": 2606820000,
+        "change": 105870000,
+        "change_pct": 4233
+    },
+    ...
+]
+```
+
+**示例**：
+
+```python
+from kline_fetcher import KLineFetcher
+fetcher = KLineFetcher()
+
+plates = fetcher.get_all_concept_plates()
+if plates:
+    for plate in plates[:5]:
+        print(f"概念板块: {plate['name']} ({plate['code']})")
+```
+
+---
+
+#### `get_concept_plate_kline` — 获取概念板块K线数据
+
+```python
+def get_concept_plate_kline(
+    self,
+    plate_code: str,                        # 概念板块代码（如 "994612"）
+    count: int = -220,                      # 请求数量（负数=由近及远）
+    market: int = 44,                       # 市场编号（概念板块默认44）
+) -> Optional[List[Dict]]
+```
+
+**返回值**：K 线数据列表，格式与 `fetch_day_kline` 相同。
+
+**示例**：
+
+```python
+from kline_fetcher import KLineFetcher
+fetcher = KLineFetcher()
+
+# 获取概念板块K线数据
+kline_data = fetcher.get_concept_plate_kline("994612", count=-100)
+if kline_data:
+    print(f"获取到 {len(kline_data)} 条K线数据")
+```
+
+---
+
+#### `get_concept_plate_stocks` — 获取概念板块成份股
+
+```python
+def get_concept_plate_stocks(
+    self,
+    plate_code: str,                        # 概念板块代码（如 "994612"）
+    start: int = 0,                         # 起始索引
+    count: int = 10,                        # 请求数量
+) -> Optional[List[Dict]]
+```
+
+**返回值**：成份股列表，每条记录格式：
+
+```python
+[
+    {
+        "code": "688361",
+        "name": "中科飞测",
+        "market": 1,
+        "price": 258940000,
+        "change": 38440000,
+        "change_pct": 17433,
+        "high": 264600000,
+        "low": 230000000
+    },
+    ...
+]
+```
+
+**示例**：
+
+```python
+from kline_fetcher import KLineFetcher
+fetcher = KLineFetcher()
+
+# 获取概念板块成份股
+stocks = fetcher.get_concept_plate_stocks("994612", count=20)
+if stocks:
+    print(f"概念板块包含 {len(stocks)} 只股票")
+    for stock in stocks[:10]:
+        print(f"  {stock['name']} ({stock['code']})")
+```
+
+---
+
+#### `get_stock_concept_plates` — 获取股票所属概念板块
+
+```python
+def get_stock_concept_plates(
+    self,
+    code: str,                              # 股票代码（纯数字）
+    market: int,                            # 市场编号
+) -> Optional[List[Dict]]
+```
+
+**返回值**：概念板块列表，包含股票所属的所有概念板块信息。
+
+**示例**：
+
+```python
+from kline_fetcher import KLineFetcher
+fetcher = KLineFetcher()
+
+# 获取股票所属概念板块
+plates = fetcher.get_stock_concept_plates("600519", market=1)
+if plates:
+    print(f"股票所属概念板块: {[plate['name'] for plate in plates]}")
+```
 
 ---
 
@@ -557,6 +698,26 @@ df = D.features(["SH600519"], ["$close"], start_time="2026-05-08", end_time="202
 
 ---
 
+## 测试
+
+项目包含完整的测试文件，位于 `tests/` 目录。
+
+### 运行测试
+
+```bash
+cd tests
+python test_concept_plates.py
+```
+
+### 测试覆盖
+
+- 概念板块列表获取
+- 概念板块K线数据获取
+- 概念板块成份股获取
+- 股票所属概念板块查询
+
+---
+
 ## 向后兼容
 
 旧的 `from data_v2.xxx import ...` 导入方式仍然可用（通过 `data_v2/__init__.py` 的 re-export）：
@@ -577,7 +738,7 @@ from kline_fetcher import KLineFetcher, KLineToQlib
 |------|--------------|------------------------|
 | 数据源 | iFinD HTTP API | 中焯行情 API |
 | 认证 | access_token + refresh_token | 无需认证 |
-| 概念板块 | 支持 | 不支持 |
+| 概念板块 | 支持 | 支持 |
 | 批量查询 | 支持（多只股票一次请求） | 仅单只查询 |
 | 额度限制 | 周额度/月额度（500万条/周） | 未知（暂无限制） |
 | 复权方式 | 前复权/后复权可选 | 前复权（cqtype=1） |

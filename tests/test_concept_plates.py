@@ -6,6 +6,12 @@
 使用 unittest 框架测试 KLineFetcher 类中的概念板块相关功能
 """
 
+import sys
+import os
+
+# 添加项目根目录到路径，使测试文件能找到 kline_fetcher 模块
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import unittest
 import logging
 from kline_fetcher import KLineFetcher
