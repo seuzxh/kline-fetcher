@@ -394,3 +394,257 @@ class KLineFetcher:
             "name": stock_name,
             "market_sn": market_sn,
         }
+
+    def get_all_concept_plates(self) -> Optional[List[Dict]]:
+        """获取所有概念板块列表。
+        
+        从API获取A股所有概念板块的基本信息，包括板块代码、名称、市场代码以及
+        可能的行情数据（最新价、涨跌额、涨跌幅）。
+        
+        参数:
+            无
+            
+        返回值:
+            Optional[List[Dict]]: 概念板块列表，每个板块是一个字典，包含以下键：
+                - code (str): 板块代码
+                - name (str): 板块名称
+                - market (int): 市场代码（44表示概念板块市场）
+                - price (int, optional): 最新价（原始整数格式）
+                - change (int, optional): 涨跌额（原始整数格式）
+                - change_pct (int, optional): 涨跌幅（原始整数格式）
+            如果请求失败，返回 None。
+            
+        使用示例:
+            >>> fetcher = KLineFetcher()
+            >>> plates = fetcher.get_all_concept_plates()
+            >>> if plates:
+            ...     for plate in plates[:5]:  # 只显示前5个
+            ...         print(f"{plate['code']} - {plate['name']}")
+        """
+        # 构建请求参数
+        params = {
+            "Action": 10007,  # 接口动作代码，10007表示获取概念板块列表
+            "TFrom": "newAndroid",
+            "needtitle": 1,
+            "subtype": 1,
+            "rights": 0,
+            "uniqueid": "5BE160A5-E1D9-3DF2-B24D-337FE097D3C2",
+            "direction": 1,
+            "clientversion": "6.2.8",
+            "906.props": "0|2|10|514",
+            "__SDK_VER": 1,
+            "start": 0,  # 分页起始位置
+            "count": 30,  # 每页数量
+            "groups": "HQ_StockInfo|HQ_StockProp",
+            "mobilekind": "android_Xiaomi_11",
+            "sort": 514,  # 排序字段，514表示涨跌幅
+            "CFrom": "GXAPP",
+            "props": "10|510|514|573|4|575|5|574|6|576|7|577|12|13|21|551|513|521|23|906|751|752|753|754|755|756|757|11",
+            "market": 44,  # 市场代码，44表示概念板块市场
+            "Route": 1,
+            "routemarkets": 44,
+            "langtype": 1,
+            "deviceName": "Xiaomi",
+        }
+
+        # 发送API请求
+        raw = self._request(params)
+        if raw is None:
+            return None
+
+        # 初始化结果列表
+        plates = []
+        
+        # 检查响应中是否包含必要的字段
+        if "StockCode" in raw and "StockName" in raw and "MarketSN" in raw:
+            codes = raw["StockCode"]
+            names = raw["StockName"]
+            markets = raw["MarketSN"]
+            
+            # 遍历所有概念板块
+            for i in range(len(codes)):
+                # 构建板块基本信息
+                plate = {
+                    "code": codes[i],
+                    "name": names[i],
+                    "market": markets[i]
+                }
+                
+                # 添加可选的行情数据字段（如果响应中存在）
+                if "QuoteLast" in raw and i < len(raw["QuoteLast"]):
+                    plate["price"] = raw["QuoteLast"][i]
+                if "PxChg" in raw and i < len(raw["PxChg"]):
+                    plate["change"] = raw["PxChg"][i]
+                if "PxChgPct" in raw and i < len(raw["PxChgPct"]):
+                    plate["change_pct"] = raw["PxChgPct"][i]
+                
+                plates.append(plate)
+        
+        self.logger.info(f"Fetched {len(plates)} concept plates")
+        return plates
+
+    def get_concept_plate_kline(self, plate_code: str, count: int = -220, market: int = 44) -> Optional[List[Dict]]:
+        klinetype = "500"
+        params = {
+            "Action": 10002,
+            "code": plate_code,
+            "market": market,
+            "klinetype": klinetype,
+            "cqType": 0,
+            "props": "0|1|2|3|4|191|190|422|519",
+            "422.daycount": -220,
+            f"{klinetype}.count": count,
+            "TFrom": "newAndroid",
+            "CFrom": "GXAPP",
+            "clientversion": "6.2.8",
+            "__SDK_VER": 1,
+            "mobilekind": "android_Xiaomi_11",
+            "uniqueid": "5BE160A5-E1D9-3DF2-B24D-337FE097D3C2",
+            "Route": 1,
+            "langtype": 1,
+            "deviceName": "Xiaomi",
+        }
+
+        raw = self._request(params)
+        if raw is None:
+            return None
+
+        response_key = KLINE_RESPONSE_KEY_MAP.get(klinetype)
+        if not response_key or response_key not in raw:
+            self.logger.warning(f"No {response_key} in response for plate_code={plate_code}")
+            return None
+
+        data_list = raw[response_key]
+        if not data_list or len(data_list) == 0:
+            self.logger.warning(f"Empty {response_key} for plate_code={plate_code}")
+            return None
+
+        stocks_per_h = raw.get("StocksPerH", 100)
+        if isinstance(stocks_per_h, list) and stocks_per_h:
+            stocks_per_h = stocks_per_h[0]
+        stocks_per_h = int(stocks_per_h) if stocks_per_h else 100
+
+        return self._parse_kline_items(data_list[0], klinetype, stocks_per_h)
+
+    def get_concept_plate_stocks(self, plate_code: str, start: int = 0, count: int = 10) -> Optional[List[Dict]]:
+        params = {
+            "Action": 10005,
+            "block.include": 1,
+            "block.type": 1,
+            "TFrom": "newAndroid",
+            "needtitle": 1,
+            "rights": 0,
+            "block": plate_code,
+            "uniqueid": "5BE160A5-E1D9-3DF2-B24D-337FE097D3C2",
+            "direction": 1,
+            "clientversion": "6.2.8",
+            "__SDK_VER": 1,
+            "start": start,
+            "count": count,
+            "groups": "HQ_StockInfo|HQ_StockProp",
+            "mobilekind": "android_Xiaomi_11",
+            "sort": 514,
+            "CFrom": "GXAPP",
+            "props": "710|560|514|10|4|6|7|60|61|62|11|510|711",
+            "Route": 1,
+            "routemarkets": 44,
+            "langtype": 1,
+            "deviceName": "Xiaomi",
+        }
+
+        raw = self._request(params)
+        if raw is None:
+            return None
+
+        # 解析成份股数据
+        stocks = []
+        if "StockCode" in raw and "StockName" in raw and "MarketSN" in raw:
+            codes = raw["StockCode"]
+            names = raw["StockName"]
+            markets = raw["MarketSN"]
+            
+            for i in range(len(codes)):
+                stock = {
+                    "code": codes[i],
+                    "name": names[i],
+                    "market": markets[i]
+                }
+                # 添加其他可能的字段
+                if "QuoteLast" in raw and i < len(raw["QuoteLast"]):
+                    stock["price"] = raw["QuoteLast"][i]
+                if "PxChg" in raw and i < len(raw["PxChg"]):
+                    stock["change"] = raw["PxChg"][i]
+                if "PxChgPct" in raw and i < len(raw["PxChgPct"]):
+                    stock["change_pct"] = raw["PxChgPct"][i]
+                if "High" in raw and i < len(raw["High"]):
+                    stock["high"] = raw["High"][i]
+                if "Low" in raw and i < len(raw["Low"]):
+                    stock["low"] = raw["Low"][i]
+                stocks.append(stock)
+        
+        self.logger.info(f"Fetched {len(stocks)} stocks for plate {plate_code}")
+        return stocks
+
+    def get_stock_concept_plates(self, code: str, market: int) -> Optional[List[Dict]]:
+        params = {
+            "Action": 10000,
+            "codes": f"{code}|{market}",
+            "clientversion": "6.2.8",
+            "__sdk_ver": 10001,
+            "count": 1,
+            "groups": "HQ_StockInfo",
+            "mobilekind": "android_Xiaomi_11",
+            "TFrom": "newAndroid",
+            "tztreqfrom": "android.webview",
+            "CFrom": "GXAPP",
+            "props": "11|10|147|19|20|13|521|22|23|320|554|555|1034|553|1001|550|1040|552|1033|124|125|135|134|104|105|141|142|289|422|131|132|133|190|191|1039|1|",
+            "market": market,
+            "reqlinktype": 0,
+            "tztsno": "de6fb0a5c07461e3212220fbb33b8a1c",
+            "langtype": 1,
+            "deviceName": "Xiaomi",
+            "outtype": 1,
+            "uniqueid": "5BE160A5-E1D9-3DF2-B24D-337FE097D3C2",
+        }
+
+        raw = self._request(params)
+        if raw is None:
+            return None
+
+        # 解析股票所属概念板块数据
+        # 注意：这个API的响应格式可能与其他不同，需要根据实际情况调整
+        concept_plates = []
+        
+        # 检查是否有概念板块相关的字段
+        # 可能的字段名：BlockCode, BlockName, ConceptCode, ConceptName 等
+        # 这里使用一个更通用的方式，检查所有可能包含概念板块信息的字段
+        
+        # 先尝试查找包含板块信息的字段
+        block_fields = []
+        for key in raw.keys():
+            if "Block" in key or "Concept" in key:
+                block_fields.append(key)
+        
+        if block_fields:
+            # 假设第一个板块字段包含概念板块代码
+            code_field = block_fields[0]
+            if isinstance(raw[code_field], list):
+                for i, plate_code in enumerate(raw[code_field]):
+                    plate = {
+                        "code": plate_code
+                    }
+                    # 尝试查找对应的名称字段
+                    for name_field in block_fields:
+                        if name_field != code_field and isinstance(raw[name_field], list) and i < len(raw[name_field]):
+                            plate["name"] = raw[name_field][i]
+                    concept_plates.append(plate)
+        
+        if not concept_plates:
+            # 如果没有找到明确的板块字段，尝试解析HQ_StockInfo
+            if "HQ_StockInfo" in raw and isinstance(raw["HQ_StockInfo"], list):
+                for item in raw["HQ_StockInfo"]:
+                    if isinstance(item, dict) and any("block" in k.lower() or "concept" in k.lower() for k in item.keys()):
+                        concept_plates.append(item)
+        
+        self.logger.info(f"Fetched {len(concept_plates)} concept plates for stock {code}")
+        return concept_plates
