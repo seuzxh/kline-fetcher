@@ -484,16 +484,50 @@ class KLineFetcher:
         return plates
 
     def get_concept_plate_kline(self, plate_code: str, count: int = -220, market: int = 44) -> Optional[List[Dict]]:
+        """获取指定概念板块的日K线数据。
+        
+        从API获取指定概念板块的历史日K线数据，包括开盘价、最高价、最低价、
+        收盘价、成交量和成交额等信息。默认获取最近220个交易日的数据。
+        
+        参数:
+            plate_code (str): 概念板块代码，例如 "994612"
+            count (int, optional): K线数量，负值表示从最新数据向前获取，
+                正值表示从某个时间点向后获取。默认值为 -220，表示获取
+                最近220个交易日的K线数据。
+            market (int, optional): 市场代码，44表示概念板块市场。默认值为 44。
+            
+        返回值:
+            Optional[List[Dict]]: K线数据列表，每个元素是一个字典，包含以下键：
+                - date (str): 日期，格式为 "yyyy-mm-dd"
+                - open (float): 开盘价
+                - high (float): 最高价
+                - low (float): 最低价
+                - close (float): 收盘价
+                - volume (float): 成交量
+                - amount (float): 成交额（单位：万元）
+            如果请求失败或无数据，返回 None。
+            
+        使用示例:
+            >>> fetcher = KLineFetcher()
+            >>> kline_data = fetcher.get_concept_plate_kline("994612")
+            >>> if kline_data:
+            ...     print(f"共获取 {len(kline_data)} 条K线数据")
+            ...     print(f"最新K线: {kline_data[0]}")
+            >>> # 获取最近100条K线
+            >>> kline_data_short = fetcher.get_concept_plate_kline("994612", count=-100)
+        """
+        # 设置K线类型为日线（"500"表示日线）
         klinetype = "500"
+        # 构建API请求参数
         params = {
-            "Action": 10002,
-            "code": plate_code,
-            "market": market,
-            "klinetype": klinetype,
-            "cqType": 0,
-            "props": "0|1|2|3|4|191|190|422|519",
-            "422.daycount": -220,
-            f"{klinetype}.count": count,
+            "Action": 10002,  # 接口动作代码，10002表示获取K线数据
+            "code": plate_code,  # 概念板块代码
+            "market": market,  # 市场代码，44表示概念板块市场
+            "klinetype": klinetype,  # K线类型
+            "cqType": 0,  # 除权除息类型，0表示不复权
+            "props": "0|1|2|3|4|191|190|422|519",  # 请求的数据字段
+            "422.daycount": -220,  # 额外的日线数据数量参数
+            f"{klinetype}.count": count,  # K线数量
             "TFrom": "newAndroid",
             "CFrom": "GXAPP",
             "clientversion": "6.2.8",
@@ -505,25 +539,30 @@ class KLineFetcher:
             "deviceName": "Xiaomi",
         }
 
+        # 发送API请求
         raw = self._request(params)
         if raw is None:
             return None
 
+        # 获取对应的响应键名
         response_key = KLINE_RESPONSE_KEY_MAP.get(klinetype)
         if not response_key or response_key not in raw:
             self.logger.warning(f"No {response_key} in response for plate_code={plate_code}")
             return None
 
+        # 提取K线数据列表
         data_list = raw[response_key]
         if not data_list or len(data_list) == 0:
             self.logger.warning(f"Empty {response_key} for plate_code={plate_code}")
             return None
 
+        # 获取每手股数（用于成交量转换）
         stocks_per_h = raw.get("StocksPerH", 100)
         if isinstance(stocks_per_h, list) and stocks_per_h:
             stocks_per_h = stocks_per_h[0]
         stocks_per_h = int(stocks_per_h) if stocks_per_h else 100
 
+        # 解析并返回K线数据
         return self._parse_kline_items(data_list[0], klinetype, stocks_per_h)
 
     def get_concept_plate_stocks(self, plate_code: str, start: int = 0, count: int = 10) -> Optional[List[Dict]]:
