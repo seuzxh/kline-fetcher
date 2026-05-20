@@ -566,49 +566,86 @@ class KLineFetcher:
         return self._parse_kline_items(data_list[0], klinetype, stocks_per_h)
 
     def get_concept_plate_stocks(self, plate_code: str, start: int = 0, count: int = 10) -> Optional[List[Dict]]:
+        """获取指定概念板块的成份股列表。
+        
+        从API获取指定概念板块的成份股信息，包括股票代码、名称、市场代码以及
+        可能的行情数据（最新价、涨跌额、涨跌幅、最高价、最低价）。支持分页获取。
+        
+        参数:
+            plate_code (str): 概念板块代码，例如 "994612"
+            start (int, optional): 分页起始位置，从 0 开始。默认值为 0。
+            count (int, optional): 每页获取的股票数量。默认值为 10。
+            
+        返回值:
+            Optional[List[Dict]]: 成份股列表，每个股票是一个字典，包含以下键：
+                - code (str): 股票代码
+                - name (str): 股票名称
+                - market (int): 市场代码（0表示深圳，1表示上海，103表示北京）
+                - price (int, optional): 最新价（原始整数格式）
+                - change (int, optional): 涨跌额（原始整数格式）
+                - change_pct (int, optional): 涨跌幅（原始整数格式）
+                - high (int, optional): 最高价（原始整数格式）
+                - low (int, optional): 最低价（原始整数格式）
+            如果请求失败，返回 None。
+            
+        使用示例:
+            >>> fetcher = KLineFetcher()
+            >>> # 获取某个概念板块的前10只成份股
+            >>> stocks = fetcher.get_concept_plate_stocks("994612")
+            >>> if stocks:
+            ...     for stock in stocks:
+            ...         print(f"{stock['code']} - {stock['name']}")
+            >>> # 获取某个概念板块的第11-20只成份股
+            >>> stocks_page2 = fetcher.get_concept_plate_stocks("994612", start=10, count=10)
+        """
+        # 构建请求参数
         params = {
-            "Action": 10005,
+            "Action": 10005,  # 接口动作代码，10005表示获取板块成份股
             "block.include": 1,
             "block.type": 1,
             "TFrom": "newAndroid",
             "needtitle": 1,
             "rights": 0,
-            "block": plate_code,
+            "block": plate_code,  # 概念板块代码
             "uniqueid": "5BE160A5-E1D9-3DF2-B24D-337FE097D3C2",
             "direction": 1,
             "clientversion": "6.2.8",
             "__SDK_VER": 1,
-            "start": start,
-            "count": count,
+            "start": start,  # 分页起始位置
+            "count": count,  # 每页数量
             "groups": "HQ_StockInfo|HQ_StockProp",
             "mobilekind": "android_Xiaomi_11",
-            "sort": 514,
+            "sort": 514,  # 排序字段，514表示涨跌幅
             "CFrom": "GXAPP",
-            "props": "710|560|514|10|4|6|7|60|61|62|11|510|711",
+            "props": "710|560|514|10|4|6|7|60|61|62|11|510|711",  # 请求的数据字段
             "Route": 1,
-            "routemarkets": 44,
+            "routemarkets": 44,  # 路由市场，44表示概念板块市场
             "langtype": 1,
             "deviceName": "Xiaomi",
         }
 
+        # 发送API请求
         raw = self._request(params)
         if raw is None:
             return None
 
         # 解析成份股数据
         stocks = []
+        # 检查响应中是否包含必要的字段
         if "StockCode" in raw and "StockName" in raw and "MarketSN" in raw:
             codes = raw["StockCode"]
             names = raw["StockName"]
             markets = raw["MarketSN"]
             
+            # 遍历所有成份股
             for i in range(len(codes)):
+                # 构建股票基本信息
                 stock = {
                     "code": codes[i],
                     "name": names[i],
                     "market": markets[i]
                 }
-                # 添加其他可能的字段
+                # 添加可选的行情数据字段（如果响应中存在）
                 if "QuoteLast" in raw and i < len(raw["QuoteLast"]):
                     stock["price"] = raw["QuoteLast"][i]
                 if "PxChg" in raw and i < len(raw["PxChg"]):
