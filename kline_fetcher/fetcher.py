@@ -60,11 +60,19 @@ class KLineFetcher:
 
     @staticmethod
     def infer_market(code: str) -> int:
-        if code.startswith(("600", "601", "603", "605", "688", "689")):
+        upper = code.upper()
+        if upper.startswith("SH"):
             return MARKET_CODE_MAP["sh"]
-        if code.startswith(("000", "001", "002", "003", "300", "301")):
+        if upper.startswith("SZ"):
             return MARKET_CODE_MAP["sz"]
-        if code.startswith(("8", "4", "920")):
+        if upper.startswith("BJ"):
+            return MARKET_CODE_MAP["bj"]
+        numeric = code.lstrip("SHshSZszBJbj")
+        if numeric.startswith(("600", "601", "603", "605", "688", "689")):
+            return MARKET_CODE_MAP["sh"]
+        if numeric.startswith(("000", "001", "002", "003", "300", "301")):
+            return MARKET_CODE_MAP["sz"]
+        if numeric.startswith(("8", "4", "920")):
             return MARKET_CODE_MAP["bj"]
         return MARKET_CODE_MAP["sz"]
 
@@ -118,9 +126,11 @@ class KLineFetcher:
         if market is None:
             market = self.infer_market(code)
 
+        numeric_code = code.lstrip("SHshSZszBJbj") or code
+
         params = {
             "Action": 10002,
-            "code": code,
+            "code": numeric_code,
             "market": market,
             "klinetype": klinetype,
             "cqtype": kline_cfg.get("cqtype", 1),

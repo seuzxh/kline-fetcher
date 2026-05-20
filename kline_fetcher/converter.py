@@ -167,11 +167,19 @@ class KLineToQlib:
 
     @staticmethod
     def code_to_qlib_dir(code: str) -> str:
-        if code.startswith(("600", "601", "603", "605", "688", "689")):
+        upper = code.upper()
+        if upper.startswith("SH"):
+            return f"sh{code.lstrip('SHsh')}"
+        if upper.startswith("SZ"):
+            return f"sz{code.lstrip('SZsz')}"
+        if upper.startswith("BJ"):
+            return f"bj{code.lstrip('BJbj')}"
+        numeric = code.lstrip("SHshSZszBJbj")
+        if numeric.startswith(("600", "601", "603", "605", "688", "689")):
             return f"sh{code}"
-        if code.startswith(("000", "001", "002", "003", "300", "301")):
+        if numeric.startswith(("000", "001", "002", "003", "300", "301")):
             return f"sz{code}"
-        if code.startswith(("8", "4", "920")):
+        if numeric.startswith(("8", "4", "920")):
             return f"bj{code}"
         return f"sz{code}"
 
