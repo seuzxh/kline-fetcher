@@ -662,19 +662,44 @@ class KLineFetcher:
         return stocks
 
     def get_stock_concept_plates(self, code: str, market: int) -> Optional[List[Dict]]:
+        """获取指定股票所属的概念板块列表。
+        
+        从API获取指定股票所属的所有概念板块信息，包括板块代码和名称。
+        该方法会尝试多种解析策略，以适应API响应格式的变化。
+        
+        参数:
+            code (str): 股票代码，例如 "600519"
+            market (int): 市场代码，0表示深圳，1表示上海，103表示北京
+            
+        返回值:
+            Optional[List[Dict]]: 概念板块列表，每个板块是一个字典，包含以下键：
+                - code (str): 板块代码
+                - name (str, optional): 板块名称（如果API返回）
+            如果请求失败，返回 None。
+            
+        使用示例:
+            >>> fetcher = KLineFetcher()
+            >>> # 获取贵州茅台（600519）所属的概念板块
+            >>> plates = fetcher.get_stock_concept_plates("600519", 1)
+            >>> if plates:
+            ...     print(f"贵州茅台共属于 {len(plates)} 个概念板块")
+            ...     for plate in plates:
+            ...         print(f"  - {plate.get('name', '未知')} ({plate['code']})")
+        """
+        # 构建API请求参数
         params = {
-            "Action": 10000,
-            "codes": f"{code}|{market}",
+            "Action": 10000,  # 接口动作代码，10000表示获取股票基本信息
+            "codes": f"{code}|{market}",  # 股票代码和市场代码组合
             "clientversion": "6.2.8",
             "__sdk_ver": 10001,
             "count": 1,
-            "groups": "HQ_StockInfo",
+            "groups": "HQ_StockInfo",  # 数据分组，HQ_StockInfo表示股票基本信息
             "mobilekind": "android_Xiaomi_11",
             "TFrom": "newAndroid",
             "tztreqfrom": "android.webview",
             "CFrom": "GXAPP",
-            "props": "11|10|147|19|20|13|521|22|23|320|554|555|1034|553|1001|550|1040|552|1033|124|125|135|134|104|105|141|142|289|422|131|132|133|190|191|1039|1|",
-            "market": market,
+            "props": "11|10|147|19|20|13|521|22|23|320|554|555|1034|553|1001|550|1040|552|1033|124|125|135|134|104|105|141|142|289|422|131|132|133|190|191|1039|1|",  # 请求的数据字段
+            "market": market,  # 市场代码
             "reqlinktype": 0,
             "tztsno": "de6fb0a5c07461e3212220fbb33b8a1c",
             "langtype": 1,
@@ -683,42 +708,47 @@ class KLineFetcher:
             "uniqueid": "5BE160A5-E1D9-3DF2-B24D-337FE097D3C2",
         }
 
+        # 发送API请求
         raw = self._request(params)
         if raw is None:
             return None
 
-        # 解析股票所属概念板块数据
-        # 注意：这个API的响应格式可能与其他不同，需要根据实际情况调整
+        # 初始化概念板块列表
         concept_plates = []
         
-        # 检查是否有概念板块相关的字段
+        # 策略1：查找包含 "Block" 或 "Concept" 关键词的字段
         # 可能的字段名：BlockCode, BlockName, ConceptCode, ConceptName 等
-        # 这里使用一个更通用的方式，检查所有可能包含概念板块信息的字段
-        
-        # 先尝试查找包含板块信息的字段
         block_fields = []
         for key in raw.keys():
             if "Block" in key or "Concept" in key:
                 block_fields.append(key)
         
         if block_fields:
-            # 假设第一个板块字段包含概念板块代码
+            # 假设第一个找到的字段是板块代码字段
             code_field = block_fields[0]
+            # 检查板块代码字段是否为列表类型
             if isinstance(raw[code_field], list):
+                # 遍历所有板块代码
                 for i, plate_code in enumerate(raw[code_field]):
+                    # 构建板块基本信息
                     plate = {
                         "code": plate_code
                     }
-                    # 尝试查找对应的名称字段
+                    # 在其他板块相关字段中查找对应的板块名称
                     for name_field in block_fields:
+                        # 排除代码字段本身，检查名称字段是否为列表类型且索引有效
                         if name_field != code_field and isinstance(raw[name_field], list) and i < len(raw[name_field]):
                             plate["name"] = raw[name_field][i]
+                    # 将板块信息添加到结果列表
                     concept_plates.append(plate)
         
+        # 策略2：如果策略1没有找到数据，尝试解析 HQ_StockInfo 分组
         if not concept_plates:
-            # 如果没有找到明确的板块字段，尝试解析HQ_StockInfo
+            # 检查响应中是否包含 HQ_StockInfo 分组
             if "HQ_StockInfo" in raw and isinstance(raw["HQ_StockInfo"], list):
+                # 遍历 HQ_StockInfo 中的每个项目
                 for item in raw["HQ_StockInfo"]:
+                    # 检查项目是否为字典类型，且包含与板块相关的键（不区分大小写）
                     if isinstance(item, dict) and any("block" in k.lower() or "concept" in k.lower() for k in item.keys()):
                         concept_plates.append(item)
         
