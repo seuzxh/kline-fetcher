@@ -421,30 +421,21 @@ class KLineFetcher:
             ...     for plate in plates[:5]:  # 只显示前5个
             ...         print(f"{plate['code']} - {plate['name']}")
         """
-        # 构建请求参数
+        kline_cfg = self.config.get("kline", {})
         params = {
-            "Action": 10007,  # 接口动作代码，10007表示获取概念板块列表
-            "TFrom": "newAndroid",
+            "Action": 10007,
             "needtitle": 1,
             "subtype": 1,
-            "rights": 0,
-            "uniqueid": "5BE160A5-E1D9-3DF2-B24D-337FE097D3C2",
+            "rights": kline_cfg.get("rights", 0),
             "direction": 1,
-            "clientversion": "6.2.8",
             "906.props": "0|2|10|514",
-            "__SDK_VER": 1,
-            "start": 0,  # 分页起始位置
-            "count": 30,  # 每页数量
+            "start": 0,
+            "count": 30,
             "groups": "HQ_StockInfo|HQ_StockProp",
-            "mobilekind": "android_Xiaomi_11",
-            "sort": 514,  # 排序字段，514表示涨跌幅
-            "CFrom": "GXAPP",
+            "sort": 514,
             "props": "10|510|514|573|4|575|5|574|6|576|7|577|12|13|21|551|513|521|23|906|751|752|753|754|755|756|757|11",
-            "market": 44,  # 市场代码，44表示概念板块市场
-            "Route": 1,
-            "routemarkets": 44,
-            "langtype": 1,
-            "deviceName": "Xiaomi",
+            "market": 44,
+            "Route": kline_cfg.get("route", 1),
         }
 
         # 发送API请求
@@ -516,27 +507,18 @@ class KLineFetcher:
             >>> # 获取最近100条K线
             >>> kline_data_short = fetcher.get_concept_plate_kline("994612", count=-100)
         """
-        # 设置K线类型为日线（"500"表示日线）
         klinetype = "500"
-        # 构建API请求参数
+        kline_cfg = self.config.get("kline", {})
         params = {
-            "Action": 10002,  # 接口动作代码，10002表示获取K线数据
-            "code": plate_code,  # 概念板块代码
-            "market": market,  # 市场代码，44表示概念板块市场
-            "klinetype": klinetype,  # K线类型
-            "cqType": 0,  # 除权除息类型，0表示不复权
-            "props": "0|1|2|3|4|191|190|422|519",  # 请求的数据字段
-            "422.daycount": -220,  # 额外的日线数据数量参数
-            f"{klinetype}.count": count,  # K线数量
-            "TFrom": "newAndroid",
-            "CFrom": "GXAPP",
-            "clientversion": "6.2.8",
-            "__SDK_VER": 1,
-            "mobilekind": "android_Xiaomi_11",
-            "uniqueid": "5BE160A5-E1D9-3DF2-B24D-337FE097D3C2",
-            "Route": 1,
-            "langtype": 1,
-            "deviceName": "Xiaomi",
+            "Action": 10002,
+            "code": plate_code,
+            "market": market,
+            "klinetype": klinetype,
+            "cqType": 0,
+            "props": kline_cfg.get("props", "0|1|2|3|4|191|190|519"),
+            "422.daycount": -220,
+            f"{klinetype}.count": count,
+            "Route": kline_cfg.get("route", 1),
         }
 
         # 发送API请求
@@ -599,29 +581,22 @@ class KLineFetcher:
             >>> stocks_page2 = fetcher.get_concept_plate_stocks("994612", start=10, count=10)
         """
         # 构建请求参数
+        kline_cfg = self.config.get("kline", {})
         params = {
-            "Action": 10005,  # 接口动作代码，10005表示获取板块成份股
+            "Action": 10005,
             "block.include": 1,
             "block.type": 1,
-            "TFrom": "newAndroid",
             "needtitle": 1,
-            "rights": 0,
-            "block": plate_code,  # 概念板块代码
-            "uniqueid": "5BE160A5-E1D9-3DF2-B24D-337FE097D3C2",
+            "rights": kline_cfg.get("rights", 0),
+            "block": plate_code,
             "direction": 1,
-            "clientversion": "6.2.8",
-            "__SDK_VER": 1,
-            "start": start,  # 分页起始位置
-            "count": count,  # 每页数量
+            "start": start,
+            "count": count,
             "groups": "HQ_StockInfo|HQ_StockProp",
-            "mobilekind": "android_Xiaomi_11",
-            "sort": 514,  # 排序字段，514表示涨跌幅
-            "CFrom": "GXAPP",
-            "props": "710|560|514|10|4|6|7|60|61|62|11|510|711",  # 请求的数据字段
-            "Route": 1,
-            "routemarkets": 44,  # 路由市场，44表示概念板块市场
-            "langtype": 1,
-            "deviceName": "Xiaomi",
+            "sort": 514,
+            "props": "710|560|514|10|4|6|7|60|61|62|11|510|711",
+            "Route": kline_cfg.get("route", 1),
+            "routemarkets": 44,
         }
 
         # 发送API请求
@@ -687,25 +662,16 @@ class KLineFetcher:
             ...         print(f"  - {plate.get('name', '未知')} ({plate['code']})")
         """
         # 构建API请求参数
+        kline_cfg = self.config.get("kline", {})
         params = {
-            "Action": 10000,  # 接口动作代码，10000表示获取股票基本信息
-            "codes": f"{code}|{market}",  # 股票代码和市场代码组合
-            "clientversion": "6.2.8",
-            "__sdk_ver": 10001,
+            "Action": 10000,
+            "codes": f"{code}|{market}",
             "count": 1,
-            "groups": "HQ_StockInfo",  # 数据分组，HQ_StockInfo表示股票基本信息
-            "mobilekind": "android_Xiaomi_11",
-            "TFrom": "newAndroid",
-            "tztreqfrom": "android.webview",
-            "CFrom": "GXAPP",
-            "props": "11|10|147|19|20|13|521|22|23|320|554|555|1034|553|1001|550|1040|552|1033|124|125|135|134|104|105|141|142|289|422|131|132|133|190|191|1039|1|",  # 请求的数据字段
-            "market": market,  # 市场代码
+            "groups": "HQ_StockInfo",
+            "props": "11|10|147|19|20|13|521|22|23|320|554|555|1034|553|1001|550|1040|552|1033|124|125|135|134|104|105|141|142|289|422|131|132|133|190|191|1039|1|",
+            "market": market,
             "reqlinktype": 0,
-            "tztsno": "de6fb0a5c07461e3212220fbb33b8a1c",
-            "langtype": 1,
-            "deviceName": "Xiaomi",
-            "outtype": 1,
-            "uniqueid": "5BE160A5-E1D9-3DF2-B24D-337FE097D3C2",
+            "outtype": kline_cfg.get("outtype", 1),
         }
 
         # 发送API请求
