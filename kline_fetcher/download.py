@@ -254,6 +254,20 @@ def download_min_kline(start: str, end: str, pool: str, freq: str = "1min", incr
     return status
 
 
+def generate_instruments(pool_names: List[str], qlib_data_dir: Optional[str] = None):
+    """从已下载的 features 数据生成 instruments 文件"""
+    converter = KLineToQlib(qlib_data_dir=qlib_data_dir)
+    
+    stock_list = converter.get_instruments_from_features()
+    if not stock_list:
+        logger.warning("没有找到已下载的股票数据，无法生成 instruments 文件")
+        return
+    
+    for pool_name in pool_names:
+        file_path = converter.generate_instruments_file(stock_list, pool_name)
+        logger.info(f"成功生成 instruments 文件: {file_path}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="从 KLine API 下载行情数据到 qlib_data/")
     parser.add_argument("--start", required=True, help="开始日期 (YYYY-MM-DD)")
@@ -263,6 +277,7 @@ def main():
     parser.add_argument("--freq", default="day", choices=["day", "1min", "5min"], help="数据频率")
     parser.add_argument("--pages", type=int, default=0, help="高频数据翻页次数（0=自动计算）")
     parser.add_argument("--qlib-data-dir", default=None, help="qlib 数据目录路径")
+    parser.add_argument("--generate-instruments", nargs="*", help="下载完成后生成 instruments 文件，可选多个股池名称，如 all csi300")
     args = parser.parse_args()
 
     if args.freq == "day":
@@ -273,6 +288,10 @@ def main():
     else:
         logger.error(f"暂不支持频率: {args.freq}")
         sys.exit(1)
+    
+    if args.generate_instruments is not None:
+        pools = args.generate_instruments if args.generate_instruments else ["all"]
+        generate_instruments(pools, qlib_data_dir=args.qlib_data_dir)
 
 
 if __name__ == "__main__":

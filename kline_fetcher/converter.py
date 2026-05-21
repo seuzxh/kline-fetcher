@@ -435,3 +435,87 @@ class KLineToQlib:
             fetch_start = start_date
 
         return fetch_start, end_date
+
+    def _infer_market_from_code(self, code: str) -> Optional[int]:
+        """从股票代码推断市场代码"""
+        if code.startswith(("60", "68", "87")):
+            return 1  # 上海
+        elif code.startswith(("00", "30")):
+            return 0  # 深圳
+        return None
+
+    def generate_instruments_file(
+        self,
+        stock_list: List[Tuple[str, str, str]],
+        pool_name: str = "all",
+    ) -> str:
+        """生成 qlib 格式的 instruments 文件
+
+        参数:
+            stock_list: 股票列表，格式为 (code, qlib_code, market)，如 ("600000", "SH600000", "1")
+            pool_name: 股池名称，默认 "all"
+        返回:
+            生成的文件路径
+        """
+        os.makedirs(self.instruments_dir, exist_ok=True)
+        file_path = os.path.join(self.instruments_dir, f"{pool_name}.txt")
+        lines = []
+
+        for code, qlib_code, market in stock_list:
+            qlib_dir = qlib_code.lower()
+            local_start, local_end = self.check_local_coverage(code, qlib_dir=qlib_dir)
+            
+            if local_start is None or local_end is None:
+                continue
+                
+            start_date = self.dates[local_start] if local_start < len(self.dates) else ""
+            end_date = self.dates[local_end] if local_end < len(self.dates) else ""
+            
+            if start_date and end_date:
+                lines.append(f"{qlib_code}\t{start_date}\t{end_date}")
+
+        with open(file_path, "w") as f:
+            f.write("\n".join(lines) + "\n")
+            
+        self.logger.info(f"Generated instruments file: {file_path}, {len(lines)} stocks")
+        return file_path
+
+    def get_instruments_from_features(self) -> List[Tuple[str, str, str]]:
+        """从已下载的 features 目录中扫描出所有股票列表"""
+        if not os.path.exists(self.features_dir):
+            return []
+            
+        stocks = []
+        for qlib_dir in os.listdir(self.features_dir):
+            qlib_dir_path = os.path.join(self.features_dir, qlib_dir)
+            if not os.path.isdir(qlib_dir_path):
+                continue
+                
+            # 检查是否有 bin 文件
+            has_data = False
+            for fname in os.listdir(qlib_dir_path):
+                if fname.endswith(".day.bin"):
+                    has_data = True
+                    break
+                    
+            if not has_data:
+                continue
+                
+            # 从 qlib_dir 中提取代码和市场
+            qlib_code = qlib_dir.upper()
+            if qlib_code.startswith("SH"):
+                code = qlib_code[2:]
+                market = "1"
+            elif qlib_code.startswith("SZ"):
+                code = qlib_code[2:]
+                market = "0"
+            elif qlib_code.startswith("BJ"):
+                code = qlib_code[2:]
+                market = "103"
+            else:
+                continue
+                
+            stocks.append((code, qlib_code, market))
+            
+        self.logger.info(f"Found {len(stocks)} stocks in features directory")
+        return stocks
