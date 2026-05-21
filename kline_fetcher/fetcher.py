@@ -157,7 +157,7 @@ class KLineFetcher:
 
         cqtype_val = _resolve_adjust(adjust)
         if cqtype_val is None:
-            cqtype_val = kline_cfg.get("cqtype", 1)
+            cqtype_val = kline_cfg.get("cqtype", 2)
 
         params = {
             "Action": 10002,

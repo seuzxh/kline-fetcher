@@ -5,7 +5,7 @@ api:
   retry_delay: 1
   timeout: 10
 kline:
-  cqtype: 1
+  cqtype: 2
   day_count: -1500
   min_count: -1500
   outtype: 1
