@@ -1,39 +1,35 @@
 api:
-  base_url: "http://183.242.5.14:7778"
-  timeout: 10
+  base_url: http://183.242.5.14:7778
   max_retries: 3
-  retry_delay: 1
   request_interval: 0.1
-
+  retry_delay: 1
+  timeout: 10
 kline:
   cqtype: 1
-  props: "0|1|2|3|4|191|190|519"
   day_count: -1500
   min_count: -1500
   outtype: 1
+  props: 0|1|2|3|4|191|190|519
   rights: 0
   route: 1
-
+kline_type_map:
+  15min: '565'
+  1min: '501'
+  30min: '566'
+  5min: '502'
+  60min: '567'
+  day: '500'
+  month: '562'
+  week: '561'
 market_map:
+  bj: 103
   sh: 1
   sz: 0
-  bj: 103
-
-kline_type_map:
-  day: "500"
-  1min: "501"
-  5min: "502"
-  15min: "565"
-  30min: "566"
-  60min: "567"
-  week: "561"
-  month: "562"
-
 qlib_fields:
-  - open
-  - high
-  - low
-  - close
-  - volume
-  - amount
-  - vwap
+- open
+- high
+- low
+- close
+- volume
+- amount
+- vwap

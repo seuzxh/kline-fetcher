@@ -62,11 +62,11 @@ def load_stock_pool(pool_name: str, instruments_dir: Optional[str] = None) -> li
     return stocks
 
 
-def download_day_kline(start: str, end: str, pool: str, incremental: bool = True, qlib_data_dir: Optional[str] = None):
+def download_day_kline(start: str, end: str, pool: str, incremental: bool = True, qlib_data_dir: Optional[str] = None, adjust: Optional[str] = None):
     fetcher = KLineFetcher()
     converter = KLineToQlib(qlib_data_dir=qlib_data_dir)
 
-    logger.info(f"日K数据下载: {start} ~ {end}, 股池={pool}, 增量={incremental}")
+    logger.info(f"日K数据下载: {start} ~ {end}, 股池={pool}, 增量={incremental}, 复权={adjust or '默认'}")
 
     stocks = load_stock_pool(pool, instruments_dir=converter.instruments_dir)
     if not stocks:
@@ -129,7 +129,7 @@ def download_day_kline(start: str, end: str, pool: str, incremental: bool = True
 
             begindate = seg_start.replace("-", "")
             enddate = seg_end.replace("-", "")
-            kline_data = fetcher.fetch_day_kline(code, market=market, begindate=begindate, enddate=enddate)
+            kline_data = fetcher.fetch_day_kline(code, market=market, begindate=begindate, enddate=enddate, adjust=adjust)
             if kline_data is None:
                 has_error = True
                 break
@@ -164,7 +164,7 @@ def download_day_kline(start: str, end: str, pool: str, incremental: bool = True
     return status
 
 
-def download_min_kline(start: str, end: str, pool: str, freq: str = "1min", incremental: bool = True, pages: int = 1, qlib_data_dir: Optional[str] = None):
+def download_min_kline(start: str, end: str, pool: str, freq: str = "1min", incremental: bool = True, pages: int = 1, qlib_data_dir: Optional[str] = None, adjust: Optional[str] = None):
     fetcher = KLineFetcher()
     converter = KLineToQlib(qlib_data_dir=qlib_data_dir)
 
@@ -172,7 +172,7 @@ def download_min_kline(start: str, end: str, pool: str, freq: str = "1min", incr
         logger.error(f"无 {freq} 分钟日历，请先生成日历文件")
         return {}
 
-    logger.info(f"{freq} K线数据下载: {start} ~ {end}, 股池={pool}, 增量={incremental}, 翻页={pages}")
+    logger.info(f"{freq} K线数据下载: {start} ~ {end}, 股池={pool}, 增量={incremental}, 翻页={pages}, 复权={adjust or '默认'}")
 
     stocks = load_stock_pool(pool, instruments_dir=converter.instruments_dir)
     if not stocks:
@@ -224,7 +224,7 @@ def download_min_kline(start: str, end: str, pool: str, freq: str = "1min", incr
                         continue
 
         count = -1500
-        kline_data = fetcher.fetch_min_kline(code, freq=freq, count=count, market=market, pages=pages)
+        kline_data = fetcher.fetch_min_kline(code, freq=freq, count=count, market=market, pages=pages, adjust=adjust)
         if kline_data is None:
             status[code] = "download_failed"
             failed += 1
@@ -263,13 +263,14 @@ def main():
     parser.add_argument("--freq", default="day", choices=["day", "1min", "5min"], help="数据频率")
     parser.add_argument("--pages", type=int, default=0, help="高频数据翻页次数（0=自动计算）")
     parser.add_argument("--qlib-data-dir", default=None, help="qlib 数据目录路径")
+    parser.add_argument("--adjust", default=None, choices=["qfq", "hfq", "none"], help="复权方式: qfq(前复权), hfq(后复权), none(不复权)，默认使用配置文件设置")
     args = parser.parse_args()
 
     if args.freq == "day":
-        download_day_kline(args.start, args.end, args.pool, incremental=not args.full, qlib_data_dir=args.qlib_data_dir)
+        download_day_kline(args.start, args.end, args.pool, incremental=not args.full, qlib_data_dir=args.qlib_data_dir, adjust=args.adjust)
     elif args.freq in ("1min", "5min"):
         pages = args.pages if args.pages > 0 else 1
-        download_min_kline(args.start, args.end, args.pool, freq=args.freq, incremental=not args.full, pages=pages, qlib_data_dir=args.qlib_data_dir)
+        download_min_kline(args.start, args.end, args.pool, freq=args.freq, incremental=not args.full, pages=pages, qlib_data_dir=args.qlib_data_dir, adjust=args.adjust)
     else:
         logger.error(f"暂不支持频率: {args.freq}")
         sys.exit(1)

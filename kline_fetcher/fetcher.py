@@ -5,6 +5,7 @@ import logging
 import math
 import os
 import time
+from enum import IntEnum
 from typing import Dict, List, Optional
 
 import requests
@@ -15,6 +16,32 @@ _DEFAULT_CONFIG = os.path.join(_PACKAGE_DIR, "config", "kline_config.yaml")
 
 PRICE_SCALE = 1_000_000
 TURNOVER_SCALE = 10000
+
+
+class AdjustType(IntEnum):
+    none = 0
+    qfq = 1
+    hfq = 2
+
+
+ADJUST_MAP = {
+    "qfq": AdjustType.qfq,
+    "hfq": AdjustType.hfq,
+    "none": AdjustType.none,
+}
+
+
+def _resolve_adjust(adjust: Optional[str]) -> Optional[int]:
+    if adjust is None:
+        return None
+    key = adjust.lower().strip()
+    if key in ADJUST_MAP:
+        return int(ADJUST_MAP[key])
+    try:
+        return int(adjust)
+    except (ValueError, TypeError):
+        raise ValueError(f"无效的复权参数: {adjust}，可选值: qfq(前复权), hfq(后复权), none(不复权)")
+
 
 MARKET_CODE_MAP = {
     "sh": 1,
@@ -121,19 +148,23 @@ class KLineFetcher:
         self.logger.error(f"API request failed after {max_retries} retries: params={params}")
         return None
 
-    def _build_params(self, code: str, klinetype: str, market: Optional[int] = None) -> Dict:
+    def _build_params(self, code: str, klinetype: str, market: Optional[int] = None, adjust: Optional[str] = None) -> Dict:
         kline_cfg = self.config.get("kline", {})
         if market is None:
             market = self.infer_market(code)
 
         numeric_code = code.lstrip("SHshSZszBJbj") or code
 
+        cqtype_val = _resolve_adjust(adjust)
+        if cqtype_val is None:
+            cqtype_val = kline_cfg.get("cqtype", 1)
+
         params = {
             "Action": 10002,
             "code": numeric_code,
             "market": market,
             "klinetype": klinetype,
-            "cqtype": kline_cfg.get("cqtype", 1),
+            "cqtype": cqtype_val,
             "props": kline_cfg.get("props", "0|1|2|3|4|191|190|519"),
             "outtype": kline_cfg.get("outtype", 1),
             "rights": kline_cfg.get("rights", 0),
@@ -195,9 +226,9 @@ class KLineFetcher:
 
         return result
 
-    def fetch_day_kline(self, code: str, count: Optional[int] = None, market: Optional[int] = None, begindate: Optional[str] = None, enddate: Optional[str] = None) -> Optional[List[Dict]]:
+    def fetch_day_kline(self, code: str, count: Optional[int] = None, market: Optional[int] = None, begindate: Optional[str] = None, enddate: Optional[str] = None, adjust: Optional[str] = None) -> Optional[List[Dict]]:
         klinetype = "500"
-        params = self._build_params(code, klinetype, market)
+        params = self._build_params(code, klinetype, market, adjust=adjust)
 
         if begindate is not None or enddate is not None:
             del params[f"{klinetype}.count"]
@@ -230,13 +261,13 @@ class KLineFetcher:
 
         return self._parse_kline_items(data_list[0], klinetype, stocks_per_h)
 
-    def fetch_min_kline(self, code: str, freq: str = "1min", count: Optional[int] = None, market: Optional[int] = None, pages: int = 1) -> Optional[List[Dict]]:
+    def fetch_min_kline(self, code: str, freq: str = "1min", count: Optional[int] = None, market: Optional[int] = None, pages: int = 1, adjust: Optional[str] = None) -> Optional[List[Dict]]:
         klinetype = KLINE_TYPE_MAP.get(freq)
         if klinetype is None:
             self.logger.error(f"Unsupported freq: {freq}")
             return None
 
-        params = self._build_params(code, klinetype, market)
+        params = self._build_params(code, klinetype, market, adjust=adjust)
         if count is not None:
             params[f"{klinetype}.count"] = -abs(count)
 
@@ -318,7 +349,7 @@ class KLineFetcher:
 
         return unique_data
 
-    def fetch_kline(self, code: str, freq: str, starttime: str, count: int, market: Optional[int] = None) -> Optional[List[Dict]]:
+    def fetch_kline(self, code: str, freq: str, starttime: str, count: int, market: Optional[int] = None, adjust: Optional[str] = None) -> Optional[List[Dict]]:
         parts = starttime.strip().split(" ", 1)
         if len(parts) != 2:
             self.logger.error(f"Invalid starttime format: {starttime}, expected 'yyyy-mm-dd HH:mm'")
@@ -327,7 +358,7 @@ class KLineFetcher:
 
         pages = max(1, math.ceil(abs(count) / 1500))
 
-        raw_data = self.fetch_min_kline(code, freq=freq, count=-1500, market=market, pages=pages)
+        raw_data = self.fetch_min_kline(code, freq=freq, count=-1500, market=market, pages=pages, adjust=adjust)
         if not raw_data:
             return None
 
