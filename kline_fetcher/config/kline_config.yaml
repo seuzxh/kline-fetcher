@@ -31,5 +31,5 @@ qlib_fields:
 - low
 - close
 - volume
-- amount
+- factor
 - vwap
