@@ -12,8 +12,15 @@ _DEFAULT_QLIB_DATA_DIR = os.environ.get(
     "/root/Projects/0.qlib_pro/qlib_data",
 )
 
-QLIB_DAY_FIELDS = ["open", "high", "low", "close", "volume", "amount", "vwap"]
-QLIB_MIN_FIELDS = ["open", "high", "low", "close", "volume", "amount", "vwap"]
+# ✅ qlib 必需字段（6个）+ 推荐字段
+QLIB_DAY_FIELDS = [
+    "open", "close", "high", "low", "volume", "factor",
+    "vwap", "money", "change", "change_pct"
+]
+QLIB_MIN_FIELDS = [
+    "open", "close", "high", "low", "volume", "factor",
+    "vwap", "money"
+]
 
 
 class KLineToQlib:
@@ -263,14 +270,29 @@ class KLineToQlib:
                 continue
             pos = idx - min_idx
             if 0 <= pos < cal_len:
+                # 基础字段
                 for field in ["open", "high", "low", "close", "volume", "amount"]:
                     if field in item:
                         field_arrays[field][pos] = float(item[field])
+                # ✅ qlib 必需字段
+                if "factor" in item:
+                    field_arrays["factor"][pos] = float(item["factor"])
+                else:
+                    field_arrays["factor"][pos] = 1.0  # 默认复权因子为 1
+                # 扩展字段
+                if "money" in item:
+                    field_arrays["money"][pos] = float(item["money"])
+                elif "amount" in item:
+                    field_arrays["money"][pos] = float(item["amount"])
+                if "change" in item:
+                    field_arrays["change"][pos] = float(item["change"])
+                if "change_pct" in item:
+                    field_arrays["change_pct"][pos] = float(item["change_pct"])
 
-        vwap = np.full(cal_len, np.nan, dtype=np.float32)
-        valid = field_arrays["volume"] > 0
-        vwap[valid] = field_arrays["amount"][valid] / field_arrays["volume"][valid]
-        field_arrays["vwap"] = vwap
+        # 计算 vwap（如果数据中没有）
+        vwap_valid = field_arrays["volume"] > 0
+        if "vwap" in field_arrays:
+            field_arrays["vwap"][vwap_valid] = field_arrays["amount"][vwap_valid] / field_arrays["volume"][vwap_valid]
 
         return field_arrays
 
@@ -304,14 +326,25 @@ class KLineToQlib:
                 continue
             pos = idx - min_idx
             if 0 <= pos < cal_len:
+                # 基础字段
                 for field in ["open", "high", "low", "close", "volume", "amount"]:
                     if field in item:
                         field_arrays[field][pos] = float(item[field])
+                # ✅ qlib 必需字段
+                if "factor" in item:
+                    field_arrays["factor"][pos] = float(item["factor"])
+                else:
+                    field_arrays["factor"][pos] = 1.0  # 默认复权因子为 1
+                # 扩展字段
+                if "money" in item:
+                    field_arrays["money"][pos] = float(item["money"])
+                elif "amount" in item:
+                    field_arrays["money"][pos] = float(item["amount"])
 
-        vwap = np.full(cal_len, np.nan, dtype=np.float32)
-        valid = field_arrays["volume"] > 0
-        vwap[valid] = field_arrays["amount"][valid] / field_arrays["volume"][valid]
-        field_arrays["vwap"] = vwap
+        # 计算 vwap（如果数据中没有）
+        vwap_valid = field_arrays["volume"] > 0
+        if "vwap" in field_arrays:
+            field_arrays["vwap"][vwap_valid] = field_arrays["amount"][vwap_valid] / field_arrays["volume"][vwap_valid]
 
         return field_arrays
 

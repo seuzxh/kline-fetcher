@@ -178,14 +178,23 @@ class KLineFetcher:
             if not dt["date"]:
                 continue
 
+            close = self._convert_price(item.get("ClosePrice", 0))
+            prev_close = self._convert_price(item.get("PrevClosePrice", 0))
+            
             row = {
                 "date": dt["date"],
                 "open": self._convert_price(item.get("OpenPrice", 0)),
                 "high": self._convert_price(item.get("HighPrice", 0)),
                 "low": self._convert_price(item.get("LowPrice", 0)),
-                "close": self._convert_price(item.get("ClosePrice", 0)),
+                "close": close,
                 "volume": self._convert_volume(item.get("PeriodVolume", 0), stocks_per_h),
                 "amount": self._convert_turnover(item.get("PeriodTurnover", 0)),
+                
+                # ✅ 新增 qlib 必需字段
+                "factor": self._get_factor(item),           # 复权因子（关键！）
+                "money": self._convert_turnover(item.get("PeriodTurnover", 0)),  # 成交额
+                "change": self._calculate_change(close, prev_close),     # 涨跌额
+                "change_pct": self._calculate_change_pct(close, prev_close),  # 涨跌幅
             }
 
             if dt["time"] is not None:
@@ -194,6 +203,34 @@ class KLineFetcher:
             result.append(row)
 
         return result
+    
+    def _get_factor(self, item: dict) -> float:
+        """
+        获取复权因子（前复权）
+        qlib 使用前复权数据，因子公式: factor = adjusted_price / original_price
+        原始价格 = 复权价格 / factor
+        """
+        # 优先从 API 获取复权因子
+        factor = item.get("Factor", item.get("422.Factor", None))
+        if factor is not None:
+            try:
+                return float(factor)
+            except ValueError:
+                pass
+        
+        # 如果 API 未返回，尝试从价格计算
+        # 由于获取的是前复权数据，factor 默认为 1（归一化基准）
+        return 1.0
+    
+    def _calculate_change(self, close: float, prev_close: float) -> float:
+        """计算涨跌额"""
+        return round(close - prev_close, 4) if prev_close != 0 else 0.0
+    
+    def _calculate_change_pct(self, close: float, prev_close: float) -> float:
+        """计算涨跌幅（百分比）"""
+        if prev_close == 0:
+            return 0.0
+        return round((close - prev_close) / prev_close * 100, 2)
 
     def fetch_day_kline(self, code: str, count: Optional[int] = None, market: Optional[int] = None, begindate: Optional[str] = None, enddate: Optional[str] = None) -> Optional[List[Dict]]:
         klinetype = "500"
