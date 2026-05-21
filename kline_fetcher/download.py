@@ -66,7 +66,7 @@ def download_day_kline(start: str, end: str, pool: str, incremental: bool = True
     fetcher = KLineFetcher()
     converter = KLineToQlib(qlib_data_dir=qlib_data_dir)
 
-    logger.info(f"日K数据下载: {start} ~ {end}, 股池={pool}, 增量={incremental}, 复权={adjust or '默认'}")
+    logger.info(f"日K数据下载: {start} ~ {end}, 股池={pool}, 增量={incremental}, 复权=后复权(含factor)")
 
     stocks = load_stock_pool(pool, instruments_dir=converter.instruments_dir)
     if not stocks:
@@ -129,7 +129,7 @@ def download_day_kline(start: str, end: str, pool: str, incremental: bool = True
 
             begindate = seg_start.replace("-", "")
             enddate = seg_end.replace("-", "")
-            kline_data = fetcher.fetch_day_kline(code, market=market, begindate=begindate, enddate=enddate, adjust=adjust)
+            kline_data = fetcher.fetch_day_kline_with_factor(code, market=market, begindate=begindate, enddate=enddate)
             if kline_data is None:
                 has_error = True
                 break
