@@ -12,8 +12,8 @@ _DEFAULT_QLIB_DATA_DIR = os.environ.get(
     "/root/Projects/0.qlib_pro/qlib_data",
 )
 
-QLIB_DAY_FIELDS = ["open", "high", "low", "close", "volume", "amount", "vwap"]
-QLIB_MIN_FIELDS = ["open", "high", "low", "close", "volume", "amount", "vwap"]
+QLIB_DAY_FIELDS = ["open", "high", "low", "close", "volume", "factor", "vwap"]
+QLIB_MIN_FIELDS = ["open", "high", "low", "close", "volume", "factor", "vwap"]
 
 
 class KLineToQlib:
@@ -263,14 +263,11 @@ class KLineToQlib:
                 continue
             pos = idx - min_idx
             if 0 <= pos < cal_len:
-                for field in ["open", "high", "low", "close", "volume", "amount"]:
+                for field in ["open", "high", "low", "close", "volume", "factor"]:
                     if field in item:
                         field_arrays[field][pos] = float(item[field])
-
-        vwap = np.full(cal_len, np.nan, dtype=np.float32)
-        valid = field_arrays["volume"] > 0
-        vwap[valid] = field_arrays["amount"][valid] / field_arrays["volume"][valid]
-        field_arrays["vwap"] = vwap
+                if "amount" in item and item.get("volume", 0) > 0:
+                    field_arrays["vwap"][pos] = float(item["amount"]) / float(item["volume"])
 
         return field_arrays
 
@@ -304,14 +301,11 @@ class KLineToQlib:
                 continue
             pos = idx - min_idx
             if 0 <= pos < cal_len:
-                for field in ["open", "high", "low", "close", "volume", "amount"]:
+                for field in ["open", "high", "low", "close", "volume", "factor"]:
                     if field in item:
                         field_arrays[field][pos] = float(item[field])
-
-        vwap = np.full(cal_len, np.nan, dtype=np.float32)
-        valid = field_arrays["volume"] > 0
-        vwap[valid] = field_arrays["amount"][valid] / field_arrays["volume"][valid]
-        field_arrays["vwap"] = vwap
+                if "amount" in item and item.get("volume", 0) > 0:
+                    field_arrays["vwap"][pos] = float(item["amount"]) / float(item["volume"])
 
         return field_arrays
 
