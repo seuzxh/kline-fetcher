@@ -261,6 +261,26 @@ class KLineFetcher:
 
         return self._parse_kline_items(data_list[0], klinetype, stocks_per_h)
 
+    def fetch_day_kline_with_factor(self, code: str, count: Optional[int] = None, market: Optional[int] = None, begindate: Optional[str] = None, enddate: Optional[str] = None) -> Optional[List[Dict]]:
+        hfq_data = self.fetch_day_kline(code, count=count, market=market, begindate=begindate, enddate=enddate, adjust="hfq")
+        if hfq_data is None:
+            return None
+        none_data = self.fetch_day_kline(code, count=count, market=market, begindate=begindate, enddate=enddate, adjust="none")
+        if none_data is None:
+            self.logger.error(f"Failed to fetch none-adjust data for code={code}")
+            return None
+        none_by_date = {item["date"]: item for item in none_data}
+        for item in hfq_data:
+            none_item = none_by_date.get(item["date"])
+            if none_item and none_item["close"] != 0:
+                factor = float(item["close"]) / float(none_item["close"])
+                item["factor"] = factor
+                item["volume"] = float(none_item["volume"]) / factor
+            else:
+                item["factor"] = float("nan")
+                item["volume"] = float("nan")
+        return hfq_data
+
     def fetch_min_kline(self, code: str, freq: str = "1min", count: Optional[int] = None, market: Optional[int] = None, pages: int = 1, adjust: Optional[str] = None) -> Optional[List[Dict]]:
         klinetype = KLINE_TYPE_MAP.get(freq)
         if klinetype is None:
