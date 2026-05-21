@@ -206,9 +206,10 @@ class KLineFetcher:
     
     def _get_factor(self, item: dict) -> float:
         """
-        获取复权因子（前复权）
-        qlib 使用前复权数据，因子公式: factor = adjusted_price / original_price
+        获取复权因子（后复权）
+        qlib 使用后复权数据，因子公式: factor = adjusted_price / original_price
         原始价格 = 复权价格 / factor
+        复权价格 = 原始价格 × factor
         """
         # 优先从 API 获取复权因子
         factor = item.get("Factor", item.get("422.Factor", None))
@@ -219,7 +220,7 @@ class KLineFetcher:
                 pass
         
         # 如果 API 未返回，尝试从价格计算
-        # 由于获取的是前复权数据，factor 默认为 1（归一化基准）
+        # 由于获取的是后复权数据，factor 默认为 1（归一化基准）
         return 1.0
     
     def _calculate_change(self, close: float, prev_close: float) -> float:
