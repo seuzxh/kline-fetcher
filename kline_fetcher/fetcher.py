@@ -111,7 +111,13 @@ class KLineFetcher:
         self._last_request_time = time.time()
 
     def _request(self, params: Dict) -> Optional[Dict]:
-        base_url = self.config.get("api", {}).get("base_url", "http://183.242.5.14:7778")
+        base_url = os.environ.get("KLINE_API_BASE_URL") or self.config.get("api", {}).get("base_url", "")
+        if not base_url:
+            raise EnvironmentError(
+                "API base URL is not configured. "
+                "Set the KLINE_API_BASE_URL environment variable (e.g. in .env or as a GitHub Secret/Variable), "
+                "or set api.base_url in your kline_config.yaml."
+            )
         timeout = self.config.get("api", {}).get("timeout", 10)
         max_retries = self.config.get("api", {}).get("max_retries", 3)
         retry_delay = self.config.get("api", {}).get("retry_delay", 1)

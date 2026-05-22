@@ -1,5 +1,7 @@
 api:
-  base_url: http://183.242.5.14:7778
+  # base_url is intentionally not set here to avoid committing sensitive IPs.
+  # Set the KLINE_API_BASE_URL environment variable instead (see README).
+  base_url: ""
   max_retries: 3
   request_interval: 0.1
   retry_delay: 1
