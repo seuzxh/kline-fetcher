@@ -2,7 +2,7 @@
 
 ## 模块概述
 
-`kline-fetcher` 是一个独立的 Python 包，基于中焯行情 API（`http://183.242.5.14:7778/reqxml`）获取 A 股 K 线数据，并转换为 qlib bin 格式存储。无需 Token 认证，支持 `pip install` 安装。
+`kline-fetcher` 是一个独立的 Python 包，基于中焯行情 API 获取 A 股 K 线数据，并转换为 qlib bin 格式存储。无需 Token 认证，支持 `pip install` 安装。
 
 **安装**：
 
@@ -64,7 +64,8 @@ data_v2/                          # 包项目根目录
 
 ```yaml
 api:
-  base_url: "http://183.242.5.14:7778"
+  # Do NOT set base_url here — use the KLINE_API_BASE_URL environment variable instead.
+  base_url: ""
   timeout: 10
   max_retries: 3
   retry_delay: 1
@@ -84,8 +85,58 @@ kline:
 
 | 环境变量 | 用途 | 默认值 |
 |---------|------|-------|
+| `KLINE_API_BASE_URL` | **API 服务地址**（优先于配置文件） | 无（必须配置） |
 | `KLINE_CONFIG_PATH` | KLineFetcher 配置文件路径 | 包内 `config/kline_config.yaml` |
 | `QLIB_DATA_DIR` | KLineToQlib 数据目录 | `/root/Projects/0.qlib_pro/qlib_data` |
+
+> **安全说明**：API 地址（包含 IP/域名）不应硬编码在源代码或提交的配置文件中。
+> 请通过 `KLINE_API_BASE_URL` 环境变量传入，具体方式见下方说明。
+
+#### 本地开发（`.env` 文件）
+
+项目 `.gitignore` 已忽略 `.env`，可在项目根目录创建 `.env` 文件：
+
+```bash
+# .env（不要提交到 Git）
+KLINE_API_BASE_URL=http://<your-api-host>:<port>
+```
+
+使用 `python-dotenv` 等工具加载，或在启动脚本中手动导出：
+
+```bash
+export KLINE_API_BASE_URL=http://<your-api-host>:<port>
+python your_script.py
+```
+
+#### GitHub Actions / GitHub Secrets & Variables
+
+在 GitHub 仓库的 **Settings → Secrets and variables → Actions** 中添加：
+
+- **Secret**（推荐，值不可见）：名称 `KLINE_API_BASE_URL`
+- 或 **Variable**（值可见，适合非敏感配置）：名称 `KLINE_API_BASE_URL`
+
+然后在 workflow 中通过 `env` 字段注入：
+
+```yaml
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run kline fetcher
+        env:
+          KLINE_API_BASE_URL: ${{ secrets.KLINE_API_BASE_URL }}
+          # 或使用 Variables: ${{ vars.KLINE_API_BASE_URL }}
+        run: python your_script.py
+```
+
+如果 `KLINE_API_BASE_URL` 未配置，程序将以明确的错误信息退出，而不是静默失败：
+
+```
+EnvironmentError: API base URL is not configured.
+Set the KLINE_API_BASE_URL environment variable (e.g. in .env or as a GitHub Secret/Variable),
+or set api.base_url in your kline_config.yaml.
+```
 
 ---
 
