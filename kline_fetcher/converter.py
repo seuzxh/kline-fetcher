@@ -335,11 +335,19 @@ class KLineToQlib:
             gap = data_start_idx - existing_end - 1
             nan_gap = np.full(gap, np.nan, dtype=np.float32)
             appended = np.hstack([existing_data, nan_gap, new_data.astype("<f")])
+            data_start_idx = existing_start
         elif data_start_idx <= existing_start:
-            appended = new_data.astype("<f")
-            if existing_end > new_end:
-                remaining = existing_data[new_end - existing_start + 1:]
-                appended = np.hstack([appended, remaining])
+            if new_end < existing_start - 1:
+                gap = existing_start - new_end - 1
+                nan_gap = np.full(gap, np.nan, dtype=np.float32)
+                appended = np.hstack([new_data.astype("<f"), nan_gap, existing_data])
+            elif new_end < existing_start:
+                appended = np.hstack([new_data.astype("<f"), existing_data])
+            else:
+                appended = new_data.astype("<f")
+                if existing_end > new_end:
+                    remaining = existing_data[new_end - existing_start + 1:]
+                    appended = np.hstack([appended, remaining])
             data_start_idx = min(data_start_idx, existing_start)
         else:
             offset = data_start_idx - existing_start
@@ -353,6 +361,7 @@ class KLineToQlib:
                 remaining = existing_data[overlap_end - existing_start + 1:]
                 merged = np.hstack([merged, remaining])
             appended = merged
+            data_start_idx = existing_start
 
         full_data = np.hstack([np.array([data_start_idx], dtype="<f"), appended.astype("<f")])
         full_data.tofile(str(bin_path))
