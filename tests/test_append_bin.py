@@ -1,7 +1,6 @@
 import os
 import tempfile
 import numpy as np
-import pytest
 from kline_fetcher.converter import KLineToQlib
 
 
