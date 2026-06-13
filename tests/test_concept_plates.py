@@ -3,7 +3,11 @@
 
 """
 概念板块功能完整测试文件
-使用 unittest 框架测试 KLineFetcher 类中的概念板块相关功能
+使用 unittest 框架测试 ConceptPlateFetcher 类中的概念板块相关功能
+
+v2.1.0 起，概念板块方法已从 KLineFetcher 剥离到 ConceptPlateFetcher。
+本测试为集成测试（需真实 API），默认不运行，手动触发：
+    pytest tests/test_concept_plates.py -m integration
 """
 
 import sys
@@ -14,7 +18,17 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 import unittest
 import logging
+import pytest
 from kline_fetcher import ConceptPlateFetcher
+
+# 标记为集成测试：默认跳过，仅在设置 KLINE_API_BASE_URL 且显式 -m integration 时运行
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.skipif(
+        not os.environ.get("KLINE_API_BASE_URL"),
+        reason="需要设置 KLINE_API_BASE_URL 环境变量才能运行集成测试",
+    ),
+]
 
 # 配置日志
 logging.basicConfig(
