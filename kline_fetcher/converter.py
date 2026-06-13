@@ -278,10 +278,23 @@ class KLineToQlib:
             return None
 
         indices = []
+        missing_time_count = 0
         for item in kline_data:
-            ts = f"{item['date']} {item.get('time', '00:00:00')}"
+            # 分钟K线数据必须含 time 字段；缺失时不能用 '00:00:00' 回退
+            # （该时间戳不在交易日历里，会导致数据被静默丢弃）。
+            time_val = item.get("time")
+            if not time_val:
+                missing_time_count += 1
+                indices.append(None)
+                continue
+            ts = f"{item['date']} {time_val}"
             idx = cal_idx_map.get(ts)
             indices.append(idx)
+
+        if missing_time_count > 0:
+            self.logger.warning(
+                f"{missing_time_count}/{len(kline_data)} 条分钟K线数据缺少 time 字段，已跳过"
+            )
 
         valid_indices = [i for i in indices if i is not None]
         if not valid_indices:
