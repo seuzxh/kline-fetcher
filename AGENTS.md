@@ -2,41 +2,84 @@
 
 ## 项目概述
 
-kline-fetcher 是一个 A 股 K 线数据获取与 Qlib 格式转换工具（v2.0.0）。它从中焯行情 API 获取股票行情数据，转换为 Qlib 标准的 `.bin` 格式，供量化回测框架使用。
+kline-fetcher 是一个 A 股 K 线数据获取与 Qlib 格式转换工具（v2.1.0）。它从中焯行情 API 获取股票行情数据，转换为 Qlib 标准的 `.bin` 格式，供量化回测框架使用。
 
 ## 架构
 
 ```
 kline_fetcher/
-├── __init__.py          # 包入口，导出 KLineFetcher, KLineToQlib, AdjustType
-├── fetcher.py           # API 请求层：获取K线数据、概念板块等
+├── __init__.py          # 包入口，导出 KLineFetcher, MinKLineFetcher, ConceptPlateFetcher, KLineToQlib, AdjustType
+├── _base.py             # KLineFetcher 基类：共享底座（请求/参数/解析/单位换算）+ 日K方法
+├── min_kline.py         # MinKLineFetcher(KLineFetcher)：分钟K线方法
+├── concept_plate.py     # ConceptPlateFetcher(KLineFetcher)：概念板块方法
+├── fetcher.py           # 兼容垫片（v2.1.0 前的单文件实现已拆分，保留旧导入路径）
 ├── converter.py         # 转换层：K线数据 → qlib bin 格式
 ├── download.py          # 批量下载入口 + CLI
 └── config/
     └── kline_config.yaml # 默认配置
 ```
 
-数据流：`API → fetcher.py (获取+单位转换) → download.py (批量调度) → converter.py (对齐日历+写入bin)`
+数据流：`API → _base.py/min_kline.py/concept_plate.py (获取+单位转换) → download.py (批量调度) → converter.py (对齐日历+写入bin)`
+
+**类继承结构**（v2.1.0）：
+```
+KLineFetcher (_base.py)               ← 共享底座 + 日K方法
+  ├── MinKLineFetcher (min_kline.py)       ← 继承，加分钟K方法
+  └── ConceptPlateFetcher (concept_plate.py) ← 继承，加概念板块方法
+```
 
 ## 核心类
 
-### KLineFetcher (fetcher.py)
+### KLineFetcher (_base.py) — 基类
 
-从中焯行情 API 获取行情数据。自动推断市场代码、限流、重试。
+中焯行情 API 客户端基类，提供共享底座（HTTP 请求、限流重试、参数构造、字段单位换算、K线解析）和日K线方法。自动推断市场代码、限流、重试。
 
-**关键方法**：
+**关键方法**（日K + 共享底座）：
 
 | 方法 | 用途 | 返回值 |
 |------|------|--------|
 | `fetch_day_kline(code, count, market, begindate, enddate, adjust)` | 获取日K线 | `List[Dict]` 或 `None` |
 | `fetch_day_kline_with_factor(code, count, market, begindate, enddate)` | 获取日K线（含factor计算） | `List[Dict]` 或 `None` |
-| `fetch_min_kline(code, freq, count, market, pages, adjust)` | 获取分钟K线 | `List[Dict]` 或 `None` |
-| `fetch_kline(code, freq, starttime, count, market, adjust)` | 按时间范围获取K线 | `List[Dict]` 或 `None` |
 | `fetch_trade_calendar(start_year, end_year)` | 获取交易日历 | `List[str]` 或 `None` |
+| `get_stock_info(code, market)` | 获取股票基本信息 | `Dict` 或 `None` |
+| `infer_market(code)` (静态) | 推断市场代码 | `int` |
+| `_request`, `_build_params`, `_parse_kline_items`, `_convert_*` (内部) | 共享底座 | — |
+
+### MinKLineFetcher (min_kline.py) — 分钟K线
+
+继承 `KLineFetcher`，专注分钟K线特有的：freq→klinetype 映射、locator 翻页、starttime 定位。
+
+**关键方法**：
+
+| 方法 | 用途 | 返回值 |
+|------|------|--------|
+| `fetch_min_kline(code, freq, count, market, pages, adjust)` | 获取分钟K线（支持翻页） | `List[Dict]` 或 `None` |
+| `fetch_kline(code, freq, starttime, count, market, adjust)` | 按 starttime 定位切片（**分钟K专用**） | `List[Dict]` 或 `None` |
+
+> 注：`fetch_kline` 名义通用但实际为分钟K专用（依赖 `time` 字段定位），传入 `freq="day"` 会因日K无 `time` 字段而失败。
+
+### ConceptPlateFetcher (concept_plate.py) — 概念板块
+
+继承 `KLineFetcher`，封装概念板块相关接口。
+
+**关键方法**：
+
+| 方法 | 用途 | 返回值 |
+|------|------|--------|
 | `get_all_concept_plates()` | 获取所有概念板块 | `List[Dict]` 或 `None` |
 | `get_concept_plate_kline(plate_code, count, market)` | 获取板块K线 | `List[Dict]` 或 `None` |
 | `get_concept_plate_stocks(plate_code, start, count)` | 获取板块成份股 | `List[Dict]` 或 `None` |
-| `infer_market(code)` (静态) | 推断市场代码 | `int` |
+| `get_stock_concept_plates(code, market)` | 获取股票所属板块 | `List[Dict]` 或 `None` |
+
+### 导入方式
+
+```python
+# 推荐（v2.1.0+）：按需从包入口导入
+from kline_fetcher import KLineFetcher, MinKLineFetcher, ConceptPlateFetcher
+
+# 兼容（v2.1.0 前）：旧路径仍可用，fetcher.py 为兼容垫片
+from kline_fetcher.fetcher import KLineFetcher  # 仅基类（日K方法）
+```
 
 **复权参数 adjust**：`"qfq"` (前复权=1), `"hfq"` (后复权=2), `"none"` (不复权=0), `None` (使用配置默认值，当前为后复权)
 
@@ -139,7 +182,7 @@ kline_fetcher/
 2. 逐股票：检查本地覆盖 → `fetch_day_kline_with_factor` → `day_kline_to_qlib`
 3. 增量模式下跳过已覆盖的股票/段落
 
-**分钟K下载流程**（`download_min_kline`）：
+**分钟K下载流程**（`download_min_kline`，使用 `MinKLineFetcher`）：
 1. 加载股池 → 确保分钟日历存在 → 自动计算翻页次数
 2. 逐股票：检查本地覆盖 → `fetch_min_kline` → `min_kline_to_qlib`
 
@@ -184,7 +227,8 @@ v2.0.0 使用后复权作为默认复权方式：
 
 ```yaml
 api:
-  base_url: http://183.242.5.14:7778   # API 地址
+  # base_url 不在此配置，改用环境变量 KLINE_API_BASE_URL（避免提交敏感地址）
+  base_url: ""
   max_retries: 3                         # 最大重试次数
   request_interval: 0.1                  # 请求间隔（秒）
   retry_delay: 1                         # 重试延迟（秒）
@@ -224,10 +268,20 @@ qlib_fields:                             # 写入 qlib 的字段列表
 
 | 变量 | 用途 | 默认值 |
 |------|------|--------|
+| `KLINE_API_BASE_URL` | **中焯行情 API 地址（必填）** | 无，未配置时报 EnvironmentError |
 | `KLINE_CONFIG_PATH` | 自定义配置文件路径 | 包内 `config/kline_config.yaml` |
 | `QLIB_DATA_DIR` | Qlib 数据目录 | `/root/Projects/0.qlib_pro/qlib_data` |
 
-## v2.0.0 不兼容变更
+## 版本变更记录
+
+### v2.1.0（架构变更，向后兼容）
+
+1. **分钟K线从日K剥离**：原 `fetcher.py`（792 行单文件）拆分为 `_base.py` / `min_kline.py` / `concept_plate.py`，引入 `MinKLineFetcher` 和 `ConceptPlateFetcher` 两个子类
+2. `fetcher.py` 改为兼容垫片，旧导入路径 `from kline_fetcher.fetcher import KLineFetcher` 仍可用
+3. **唯一破坏**：`KLineFetcher().get_all_concept_plates()` 等概念板块方法需改用 `ConceptPlateFetcher`；`fetch_min_kline` / `fetch_kline` 需改用 `MinKLineFetcher`
+4. 数据单位换算经实测确认（价格÷1e6、成交额÷1e4、成交量已是股），见 `_base.py` 注释
+
+### v2.0.0（不兼容变更）
 
 1. 默认复权方式从前复权(cqtype=1)改为后复权(cqtype=2)
 2. 新增 `factor` 字段，移除 `amount` 字段

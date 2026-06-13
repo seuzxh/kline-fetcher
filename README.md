@@ -13,24 +13,25 @@ pip install -e /root/Projects/0.qlib_pro/data_v2
 **快速开始**：
 
 ```python
-from kline_fetcher import KLineFetcher, KLineToQlib
+from kline_fetcher import KLineFetcher, MinKLineFetcher, KLineToQlib
 
-fetcher = KLineFetcher()
+fetcher = KLineFetcher()           # 日K线
+min_fetcher = MinKLineFetcher()    # 分钟K线
 converter = KLineToQlib()
 
 data = fetcher.fetch_day_kline("600519", count=10)
+min_data = min_fetcher.fetch_min_kline("600519", freq="5min", count=10)
 ```
 
 **核心能力**：
 - 日 K 线数据获取（支持 `begindate`/`enddate` 日期范围查询，突破 1500 条限制）
-- 高频 K 线数据获取（1min/5min/15min/30min/60min，支持 `locator` 自动翻页）
-- 统一 K 线接口 `fetch_kline`（`starttime + count` 语义，隐藏分页细节）
+- 高频 K 线数据获取（1min/5min/15min/30min/60min，支持 `locator` 自动翻页），见 `MinKLineFetcher`
 - 自动转换为 qlib bin 格式（对齐交易日历，支持追加/覆盖写入）
 - 增量更新（检查本地覆盖范围，仅下载缺失部分）
 - 大范围日 K 自动分段下载（>1500 条自动拆分）
 
 **限制**：
-- 默认前复权（`cqtype=1`），早期日期可能出现负价格（多次分红导致，属正常现象）
+- 默认后复权（`cqtype=2`，v2.0.0 起），配合 `factor` 字段可还原原始价格
 - API 单次请求最多返回 1500 条数据
 
 **扩展功能**：
@@ -39,19 +40,25 @@ data = fetcher.fetch_day_kline("600519", count=10)
 ## 目录结构
 
 ```
-data_v2/                          # 包项目根目录
+kline-fetcher/                    # 包项目根目录
 ├── pyproject.toml                # 包元数据和依赖声明
 ├── README.md                     # 本文档
-├── config/                       # 默认配置文件
-│   └── kline_config.yaml
+├── AGENTS.md                     # 项目说明（给 AI 代理用）
 ├── tests/                        # 测试文件目录
 │   ├── __init__.py               # 测试包文件
-│   └── test_concept_plates.py    # 概念板块功能测试
+│   ├── test_append_bin.py        # _append_bin 单元测试
+│   ├── test_concept_plates.py    # 概念板块集成测试（需 API）
+│   └── test_split_interfaces.py  # 拆分后接口集成测试（需 API）
 └── kline_fetcher/                # Python 包目录
-    ├── __init__.py               # 导出公共 API
-    ├── fetcher.py                # KLineFetcher — API 请求封装
+    ├── __init__.py               # 导出公共 API（KLineFetcher/MinKLineFetcher/ConceptPlateFetcher/KLineToQlib/AdjustType）
+    ├── _base.py                  # KLineFetcher 基类（共享底座 + 日K方法）
+    ├── min_kline.py              # MinKLineFetcher(KLineFetcher) — 分钟K线方法
+    ├── concept_plate.py          # ConceptPlateFetcher(KLineFetcher) — 概念板块方法
+    ├── fetcher.py                # 兼容垫片（v2.1.0 前的单文件实现已拆分，保留旧导入路径）
     ├── converter.py              # KLineToQlib — 数据转换为 qlib bin 格式
-    └── download.py               # CLI 批量下载入口
+    ├── download.py               # CLI 批量下载入口
+    └── config/
+        └── kline_config.yaml     # 默认配置
 ```
 
 ## 配置
@@ -231,6 +238,8 @@ data = fetcher.fetch_day_kline("600519")
 
 #### `fetch_min_kline` — 获取高频 K 线数据
 
+> **v2.1.0 起归属 `MinKLineFetcher`**（从 `KLineFetcher` 剥离）。
+
 ```python
 def fetch_min_kline(
     self,
@@ -261,13 +270,15 @@ def fetch_min_kline(
 
 ---
 
-#### `fetch_kline` — 统一 K 线接口（推荐）
+#### `fetch_kline` — 分钟K线时间定位切片
+
+> **v2.1.0 起归属 `MinKLineFetcher`**（名义通用，实际为分钟K专用：依赖每条数据的 `time` 字段定位，传入 `freq="day"` 会因日K无 `time` 字段而失败）。
 
 ```python
 def fetch_kline(
     self,
     code: str,                              # 股票代码（纯数字）
-    freq: str,                              # 频率：1min / 5min / 15min / 30min / 60min
+    freq: str,                              # 分钟频率：1min / 5min / 15min / 30min / 60min
     starttime: str,                         # 起始时间（"yyyy-mm-dd HH:mm" 格式）
     count: int,                             # 数据条数（正数=向后，负数=向前）
     market: Optional[int] = None,           # 市场编号
@@ -279,16 +290,16 @@ def fetch_kline(
 - `count < 0`：从 `starttime` 开始，向前取 `|count|` 条数据
 - 自动计算所需翻页次数，隐藏分页细节
 
+**已知限制**：内部仅在最近 1500 根 K 线范围内做 `starttime` 切片定位，超出该范围返回 `None`（对 1min 频率约 6 个交易日）。详见 `REVIEW_ISSUES.md` #1。
+
 **示例**：
 
 ```python
-from kline_fetcher import KLineFetcher
-fetcher = KLineFetcher()
+from kline_fetcher import MinKLineFetcher
+fetcher = MinKLineFetcher()
 
 data = fetcher.fetch_kline("600519", freq="1min", starttime="2026-05-08 09:30", count=240)
 data = fetcher.fetch_kline("600519", freq="5min", starttime="2026-05-15 15:00", count=-48)
-data = fetcher.fetch_kline("600519", freq="5min", starttime="2026-05-08 09:30", count=240)
-data = fetcher.fetch_kline("600519", freq="1min", starttime="2026-05-02 09:30", count=2400)
 ```
 
 ---
@@ -304,6 +315,8 @@ def get_stock_info(self, code: str, market: Optional[int] = None) -> Optional[Di
 ---
 
 ### 概念板块相关方法
+
+> **v2.1.0 起归属 `ConceptPlateFetcher`**（从 `KLineFetcher` 剥离）。以下方法需通过 `ConceptPlateFetcher` 实例调用。
 
 #### `get_all_concept_plates` — 获取全部概念板块
 
@@ -330,8 +343,8 @@ def get_all_concept_plates(self) -> Optional[List[Dict]]
 **示例**：
 
 ```python
-from kline_fetcher import KLineFetcher
-fetcher = KLineFetcher()
+from kline_fetcher import ConceptPlateFetcher
+fetcher = ConceptPlateFetcher()
 
 plates = fetcher.get_all_concept_plates()
 if plates:
@@ -357,8 +370,8 @@ def get_concept_plate_kline(
 **示例**：
 
 ```python
-from kline_fetcher import KLineFetcher
-fetcher = KLineFetcher()
+from kline_fetcher import ConceptPlateFetcher
+fetcher = ConceptPlateFetcher()
 
 # 获取概念板块K线数据
 kline_data = fetcher.get_concept_plate_kline("994612", count=-100)
@@ -400,8 +413,8 @@ def get_concept_plate_stocks(
 **示例**：
 
 ```python
-from kline_fetcher import KLineFetcher
-fetcher = KLineFetcher()
+from kline_fetcher import ConceptPlateFetcher
+fetcher = ConceptPlateFetcher()
 
 # 获取概念板块成份股
 stocks = fetcher.get_concept_plate_stocks("994612", count=20)
@@ -428,8 +441,8 @@ def get_stock_concept_plates(
 **示例**：
 
 ```python
-from kline_fetcher import KLineFetcher
-fetcher = KLineFetcher()
+from kline_fetcher import ConceptPlateFetcher
+fetcher = ConceptPlateFetcher()
 
 # 获取股票所属概念板块
 plates = fetcher.get_stock_concept_plates("600519", market=1)
@@ -683,9 +696,9 @@ if data:
 ### 场景2：获取高频数据并写入 qlib
 
 ```python
-from kline_fetcher import KLineFetcher, KLineToQlib
+from kline_fetcher import MinKLineFetcher, KLineToQlib
 
-fetcher = KLineFetcher()
+fetcher = MinKLineFetcher()
 converter = KLineToQlib()
 
 data = fetcher.fetch_kline("600519", freq="5min", starttime="2026-05-08 09:30", count=240)
@@ -751,35 +764,48 @@ df = D.features(["SH600519"], ["$close"], start_time="2026-05-08", end_time="202
 
 ## 测试
 
-项目包含完整的测试文件，位于 `tests/` 目录。
+项目测试位于 `tests/` 目录，分两类：
 
-### 运行测试
+### 单元测试（默认运行，无需 API）
 
 ```bash
-cd tests
-python test_concept_plates.py
+pytest                      # 默认运行，跳过集成测试
 ```
 
-### 测试覆盖
+- `test_append_bin.py`：`_append_bin` 增量合并逻辑（7 个场景：新建/相邻/间隙/重叠/子集/前插）
 
-- 概念板块列表获取
-- 概念板块K线数据获取
-- 概念板块成份股获取
-- 股票所属概念板块查询
+### 集成测试（需真实 API，默认跳过）
+
+```bash
+# 需先配置 API 地址
+export KLINE_API_BASE_URL=http://<your-api-host>:<port>
+pytest -m integration       # 显式启用集成测试
+```
+
+- `test_concept_plates.py`：概念板块 4 个方法（unittest 风格）
+- `test_split_interfaces.py`：v2.1.0 拆分后三类（KLineFetcher/MinKLineFetcher/ConceptPlateFetcher）端到端验证（27 项，含字段完整性、继承关系、翻页等）
+
+集成测试通过 `integration` marker 标记，默认 `addopts="-m 'not integration'"` 确保无 API 环境下 CI 不失败。
 
 ---
 
 ## 向后兼容
 
-旧的 `from data_v2.xxx import ...` 导入方式仍然可用（通过 `data_v2/__init__.py` 的 re-export）：
+### v2.1.0 拆分兼容
+
+v2.1.0 将原 `fetcher.py`（单文件单类）拆分为 `_base.py` / `min_kline.py` / `concept_plate.py`。旧导入路径仍可用（`fetcher.py` 为兼容垫片）：
 
 ```python
-# 旧方式（仍然有效）
-from data_v2 import KLineFetcher, KLineToQlib
+# 旧方式（v2.1.0 前的代码，仍然有效）
+from kline_fetcher.fetcher import KLineFetcher
 
-# 新方式（推荐）
-from kline_fetcher import KLineFetcher, KLineToQlib
+# 新方式（v2.1.0+ 推荐，按需导入）
+from kline_fetcher import KLineFetcher, MinKLineFetcher, ConceptPlateFetcher
 ```
+
+**唯一破坏**：`KLineFetcher` 基类不再直接含分钟K/概念板块方法，需改用对应子类：
+- `fetch_min_kline` / `fetch_kline` → `MinKLineFetcher`
+- `get_all_concept_plates` 等 → `ConceptPlateFetcher`
 
 ---
 
