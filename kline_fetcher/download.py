@@ -8,7 +8,7 @@ import sys
 import time
 from typing import Optional
 
-from kline_fetcher.fetcher import KLineFetcher
+from kline_fetcher import KLineFetcher, MinKLineFetcher
 from kline_fetcher.converter import KLineToQlib
 
 POOL_MAP = {
@@ -165,7 +165,7 @@ def download_day_kline(start: str, end: str, pool: str, incremental: bool = True
 
 
 def download_min_kline(start: str, end: str, pool: str, freq: str = "1min", incremental: bool = True, pages: int = 1, qlib_data_dir: Optional[str] = None, adjust: Optional[str] = None):
-    fetcher = KLineFetcher()
+    fetcher = MinKLineFetcher()
     converter = KLineToQlib(qlib_data_dir=qlib_data_dir)
 
     if freq not in converter.min_cal_to_idx or not converter.min_cal_to_idx[freq]:

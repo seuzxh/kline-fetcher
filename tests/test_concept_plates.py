@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 import unittest
 import logging
-from kline_fetcher import KLineFetcher
+from kline_fetcher import ConceptPlateFetcher
 
 # 配置日志
 logging.basicConfig(
@@ -31,7 +31,7 @@ class TestConceptPlates(unittest.TestCase):
     def setUpClass(cls):
         """测试类初始化，在所有测试方法执行前运行一次"""
         logger.info("=== 初始化概念板块测试 ===")
-        cls.fetcher = KLineFetcher()
+        cls.fetcher = ConceptPlateFetcher()
         # 保存测试用的概念板块代码和股票代码
         cls.test_plate_code = "994612"  # 示例概念板块代码
         cls.test_stock_code = "600519"  # 示例股票代码（贵州茅台）
