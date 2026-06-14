@@ -54,9 +54,8 @@ KLineFetcher (_base.py)               ← 共享底座 + 日K方法
 | 方法 | 用途 | 返回值 |
 |------|------|--------|
 | `fetch_min_kline(code, freq, count, market, pages, adjust)` | 获取分钟K线（支持翻页） | `List[Dict]` 或 `None` |
-| `fetch_kline(code, freq, starttime, count, market, adjust)` | 按 starttime 定位切片（**分钟K专用**） | `List[Dict]` 或 `None` |
 
-> 注：`fetch_kline` 名义通用但实际为分钟K专用（依赖 `time` 字段定位），传入 `freq="day"` 会因日K无 `time` 字段而失败。
+> 返回数据自带 `date`/`time` 字段，客户端可自行按时间切片。
 
 ### ConceptPlateFetcher (concept_plate.py) — 概念板块
 
@@ -278,7 +277,9 @@ qlib_fields:                             # 写入 qlib 的字段列表
 
 1. **分钟K线从日K剥离**：原 `fetcher.py`（792 行单文件）拆分为 `_base.py` / `min_kline.py` / `concept_plate.py`，引入 `MinKLineFetcher` 和 `ConceptPlateFetcher` 两个子类
 2. `fetcher.py` 改为兼容垫片，旧导入路径 `from kline_fetcher.fetcher import KLineFetcher` 仍可用
-3. **唯一破坏**：`KLineFetcher().get_all_concept_plates()` 等概念板块方法需改用 `ConceptPlateFetcher`；`fetch_min_kline` / `fetch_kline` 需改用 `MinKLineFetcher`
+3. **唯一破坏**：`KLineFetcher().get_all_concept_plates()` 等概念板块方法需改用 `ConceptPlateFetcher`；`fetch_min_kline` 需改用 `MinKLineFetcher`
+4. 删除失效的 `fetch_kline` 方法（返回数据自带时间字段，客户端可自行切片）
+5. 数据单位换算经实测确认（价格÷1e6、成交额÷1e4、成交量已是股），见 `_base.py` 注释
 4. 数据单位换算经实测确认（价格÷1e6、成交额÷1e4、成交量已是股），见 `_base.py` 注释
 
 ### v2.0.0（不兼容变更）

@@ -270,40 +270,6 @@ def fetch_min_kline(
 
 ---
 
-#### `fetch_kline` — 分钟K线时间定位切片
-
-> **v2.1.0 起归属 `MinKLineFetcher`**（名义通用，实际为分钟K专用：依赖每条数据的 `time` 字段定位，传入 `freq="day"` 会因日K无 `time` 字段而失败）。
-
-```python
-def fetch_kline(
-    self,
-    code: str,                              # 股票代码（纯数字）
-    freq: str,                              # 分钟频率：1min / 5min / 15min / 30min / 60min
-    starttime: str,                         # 起始时间（"yyyy-mm-dd HH:mm" 格式）
-    count: int,                             # 数据条数（正数=向后，负数=向前）
-    market: Optional[int] = None,           # 市场编号
-) -> Optional[List[Dict]]
-```
-
-**语义说明**：
-- `count > 0`：从 `starttime` 开始，向后取 `count` 条数据
-- `count < 0`：从 `starttime` 开始，向前取 `|count|` 条数据
-- 自动计算所需翻页次数，隐藏分页细节
-
-**已知限制**：内部仅在最近 1500 根 K 线范围内做 `starttime` 切片定位，超出该范围返回 `None`（对 1min 频率约 6 个交易日）。详见 `REVIEW_ISSUES.md` #1。
-
-**示例**：
-
-```python
-from kline_fetcher import MinKLineFetcher
-fetcher = MinKLineFetcher()
-
-data = fetcher.fetch_kline("600519", freq="1min", starttime="2026-05-08 09:30", count=240)
-data = fetcher.fetch_kline("600519", freq="5min", starttime="2026-05-15 15:00", count=-48)
-```
-
----
-
 #### `get_stock_info` — 获取股票基本信息
 
 ```python
@@ -701,7 +667,8 @@ from kline_fetcher import MinKLineFetcher, KLineToQlib
 fetcher = MinKLineFetcher()
 converter = KLineToQlib()
 
-data = fetcher.fetch_kline("600519", freq="5min", starttime="2026-05-08 09:30", count=240)
+# fetch_min_kline 返回数据自带 date/time 字段，客户端按需切片即可
+data = fetcher.fetch_min_kline("600519", freq="5min", count=-500, market=1)
 if data:
     ok = converter.min_kline_to_qlib("600519", data, freq="5min", mode="append")
     print(f"写入{'成功' if ok else '失败'}，共 {len(data)} 条")
@@ -804,7 +771,7 @@ from kline_fetcher import KLineFetcher, MinKLineFetcher, ConceptPlateFetcher
 ```
 
 **唯一破坏**：`KLineFetcher` 基类不再直接含分钟K/概念板块方法，需改用对应子类：
-- `fetch_min_kline` / `fetch_kline` → `MinKLineFetcher`
+- `fetch_min_kline` → `MinKLineFetcher`
 - `get_all_concept_plates` 等 → `ConceptPlateFetcher`
 
 ---
@@ -832,6 +799,5 @@ from kline_fetcher import KLineFetcher, MinKLineFetcher, ConceptPlateFetcher
 | 早期日期价格为负 | 前复权 + 多次分红导致 | 正常现象，不影响收益率计算 |
 | `fetch_day_kline` 返回 None | 日期范围 >1500 条 | 使用分段下载或 `download_day_kline` |
 | `min_kline_to_qlib` 返回 False | 缺少日历文件 | 先生成 `qlib_data/calendars/{freq}.txt` |
-| `fetch_kline` 返回 None | starttime 格式错误 | 必须为 `"yyyy-mm-dd HH:mm"` 格式 |
 | 北交所 920xxx 股票目录错误 | 旧版未支持 920 前缀 | 已修复，920 映射为 bj + market=103 |
 | `ModuleNotFoundError: No module named 'kline_fetcher'` | 未安装包 | `pip install -e /root/Projects/0.qlib_pro/data_v2` |

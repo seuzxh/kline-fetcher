@@ -104,12 +104,6 @@ class TestMinKLineFetcher:
         data = min_fetcher.fetch_day_kline(TEST_CODE, count=-1, market=TEST_MARKET, adjust="none")
         assert data is not None and len(data) > 0
 
-    def test_fetch_kline_callable(self, min_fetcher):
-        """fetch_kline 可调用不抛异常（已知限制：超出最近1500根返回 None）。"""
-        fk = min_fetcher.fetch_kline(TEST_CODE, freq="5min",
-                                     starttime="2026-06-13 14:00", count=5, market=TEST_MARKET)
-        assert fk is None or isinstance(fk, list)
-
 
 # ============ 3. ConceptPlateFetcher（概念板块）============
 

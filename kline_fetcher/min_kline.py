@@ -6,7 +6,6 @@
 本类专注分钟K特有的：freq→klinetype 映射、locator 翻页、starttime 定位切片。
 """
 
-import math
 from typing import Dict, List, Optional
 
 from kline_fetcher._base import KLineFetcher, KLINE_TYPE_MAP, KLINE_RESPONSE_KEY_MAP
@@ -19,7 +18,8 @@ class MinKLineFetcher(KLineFetcher):
 
     相较基类 KLineFetcher（日K），本类提供分钟频率特有的能力：
       - fetch_min_kline：按 freq 获取分钟K线，支持 locator 自动翻页、去重排序
-      - fetch_kline：按 starttime 定位、count 向前/向后切片（实际为分钟K专用）
+
+    返回数据自带 date/time 字段，客户端可自行按时间切片，无需专门的时间定位方法。
 
     使用示例:
         >>> fetcher = MinKLineFetcher()
@@ -101,55 +101,3 @@ class MinKLineFetcher(KLineFetcher):
 
         return unique_data
 
-    def fetch_kline(self, code: str, freq: str, starttime: str, count: int, market: Optional[int] = None, adjust: Optional[str] = None) -> Optional[List[Dict]]:
-        """按 starttime 定位、count 向前/向后取分钟K线切片。
-
-        注意：本方法为**分钟K专用**。starttime 格式为 'yyyy-mm-dd HH:mm'（分钟级精度），
-        内部调用 fetch_min_kline 并依赖每条数据的 'time' 字段做定位切片，
-        因此传入 freq="day" 会因日K数据无 'time' 字段而抛 KeyError。
-
-        参数:
-            code: 股票代码，如 "600519"
-            freq: 分钟频率，如 "1min"/"5min"/"15min"/"30min"/"60min"
-            starttime: 起始时间，格式 'yyyy-mm-dd HH:mm'
-            count: 条数。>=0 表示从 starttime 向后取 count 条；<0 表示向前取 |count| 条
-            market: 市场代码，None 则自动推断
-            adjust: 复权方式 (qfq/hfq/none)，None 用配置默认值
-
-        返回值:
-            K线数据列表（按时间升序），定位失败或无数据返回 None。
-        """
-        parts = starttime.strip().split(" ", 1)
-        if len(parts) != 2:
-            self.logger.error(f"Invalid starttime format: {starttime}, expected 'yyyy-mm-dd HH:mm'")
-            return None
-        start_date, start_time = parts
-
-        pages = max(1, math.ceil(abs(count) / 1500))
-
-        raw_data = self.fetch_min_kline(code, freq=freq, count=-1500, market=market, pages=pages, adjust=adjust)
-        if not raw_data:
-            return None
-
-        start_pos = None
-        if count >= 0:
-            for i, d in enumerate(raw_data):
-                dt_str = f"{d['date']} {d['time']}"
-                if dt_str >= starttime:
-                    start_pos = i
-                    break
-        else:
-            for i in range(len(raw_data) - 1, -1, -1):
-                dt_str = f"{raw_data[i]['date']} {raw_data[i]['time']}"
-                if dt_str <= starttime:
-                    start_pos = i
-                    break
-
-        if start_pos is None:
-            return None
-
-        if count >= 0:
-            return raw_data[start_pos:start_pos + count]
-        else:
-            begin = max(0, start_pos + count + 1)
-            return raw_data[begin:start_pos + 1]
