@@ -117,34 +117,46 @@ class KLineToQlib:
 
     @staticmethod
     def _generate_1min_timestamps(date: str, bpd: int, freq: str) -> List[str]:
+        """生成 1min 日历时间戳。
+
+        中焯 API 用「周期结束时刻」标记每根K线：09:31、11:30、13:01、15:00。
+        因此日历需含 11:30（上午收盘）和 15:00（全天收盘），否则这两根数据会丢失。
+        不含 09:30/13:00（开盘瞬间归到下一根），日历保留这两点无害（该位置无数据，留 NaN）。
+        """
         timestamps = []
+        # 上午 09:30~11:30（中焯标为 09:31~11:30，日历从 09:30 起以对齐序列）
         for h in range(9, 12):
             for m in range(0, 60):
                 if h == 9 and m < 30:
                     continue
-                if h == 11 and m > 29:
+                if h == 11 and m > 30:  # 含 11:30（上午收盘），排除 11:31+
                     continue
                 timestamps.append(f"{date} {h:02d}:{m:02d}:00")
-        for h in range(13, 15):
+        # 下午 13:00~15:00（中焯标为 13:01~15:00，日历从 13:00 起）
+        for h in range(13, 16):
             for m in range(0, 60):
+                if h == 15 and m > 0:  # 只含 15:00（全天收盘），排除 15:01+
+                    continue
                 timestamps.append(f"{date} {h:02d}:{m:02d}:00")
         return timestamps
 
     @staticmethod
     def _generate_5min_timestamps(date: str, bpd: int, freq: str) -> List[str]:
+        """生成 5min 日历时间戳。同 1min 的边界语义：含 11:30 和 15:00。"""
         timestamps = []
+        # 上午 09:30~11:30
         for m in range(30, 60, 5):
             timestamps.append(f"{date} 09:{m:02d}:00")
-        for h in range(10, 11):
-            for m in range(0, 60, 5):
-                timestamps.append(f"{date} {h:02d}:{m:02d}:00")
-        for m in range(0, 30, 5):
+        for m in range(0, 60, 5):
+            timestamps.append(f"{date} 10:{m:02d}:00")
+        for m in range(0, 31, 5):  # 含 11:30（上午收盘）
             timestamps.append(f"{date} 11:{m:02d}:00")
+        # 下午 13:00~15:00
         for m in range(0, 60, 5):
             timestamps.append(f"{date} 13:{m:02d}:00")
-        for h in range(14, 15):
-            for m in range(0, 60, 5):
-                timestamps.append(f"{date} {h:02d}:{m:02d}:00")
+        for m in range(0, 60, 5):
+            timestamps.append(f"{date} 14:{m:02d}:00")
+        timestamps.append(f"{date} 15:00:00")  # 含 15:00（全天收盘）
         return timestamps
 
     @staticmethod
