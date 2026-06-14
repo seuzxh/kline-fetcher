@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""KLineToQlib：K线数据转换为 qlib bin 格式。
 
+管理交易日历（日/分钟）、bin 文件读写、增量追加（_append_bin）。
+"""
 import logging
 import os
 from typing import Dict, List, Optional, Tuple
@@ -357,9 +360,20 @@ class KLineToQlib:
             elif new_end < existing_start:
                 appended = np.hstack([new_data.astype("<f"), existing_data])
             else:
-                appended = new_data.astype("<f")
-                if existing_end > new_end:
-                    remaining = existing_data[new_end - existing_start + 1:]
+                # 新数据覆盖旧数据开头，重叠区 [existing_start, min(existing_end, new_end)]
+                # 同样：新数据非 NaN 才覆盖，保留旧有效值
+                overlap_end_b = min(existing_end, new_end)
+                overlap_len_b = overlap_end_b - existing_start + 1
+                new_start_in_existing = existing_start - data_start_idx  # 新数据里对应 existing_start 的偏移
+                new_overlap_b = new_data[new_start_in_existing:new_start_in_existing + overlap_len_b].astype("<f")
+                old_overlap_b = existing_data[:overlap_len_b].astype("<f")
+                merged_overlap_b = np.where(np.isnan(new_overlap_b), old_overlap_b, new_overlap_b)
+                # 拼接：新数据 existing_start 之前的部分 + 合并后的重叠区
+                appended = np.hstack([new_data[:new_start_in_existing].astype("<f"), merged_overlap_b])
+                if new_end > existing_end:
+                    appended = np.hstack([appended, new_data[new_start_in_existing + overlap_len_b:].astype("<f")])
+                elif existing_end > new_end:
+                    remaining = existing_data[overlap_len_b:]
                     appended = np.hstack([appended, remaining])
             data_start_idx = min(data_start_idx, existing_start)
         else:
@@ -367,7 +381,12 @@ class KLineToQlib:
             overlap_end = min(existing_end, new_end)
             overlap_offset = overlap_end - data_start_idx + 1
             merged = existing_data[:offset].copy()
-            merged = np.hstack([merged, new_data[:overlap_offset].astype("<f")])
+            # 重叠区：新数据非 NaN 才覆盖旧数据，否则保留旧的有效值
+            # （防止不完整的新数据用 NaN 覆盖已有数据，导致静默丢失）
+            new_overlap = new_data[:overlap_offset].astype("<f")
+            old_overlap = existing_data[offset:offset + overlap_offset].astype("<f")
+            merged_overlap = np.where(np.isnan(new_overlap), old_overlap, new_overlap)
+            merged = np.hstack([merged, merged_overlap])
             if new_end > existing_end:
                 merged = np.hstack([merged, new_data[overlap_offset:].astype("<f")])
             elif existing_end > new_end:

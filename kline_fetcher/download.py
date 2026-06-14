@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""批量下载入口 + CLI。
 
+提供 download_day_kline / download_min_kline 函数和 kline-download 命令行工具，
+按股池批量获取K线并写入 qlib bin 格式。
+"""
 import argparse
 import logging
 import os
@@ -206,6 +210,20 @@ def download_min_kline(start: str, end: str, pool: str, freq: str = "1min", incr
             pages = max(1, int(needed_days / trading_days_per_page) + 1)
             logger.info(f"{freq} 日期范围需约 {needed_days:.0f} 个交易日，自动计算翻页 {pages} 次")
 
+    # 计算 end 在分钟日历中的目标索引（容许 end 当天停牌：目标放宽到 end 前一天的末尾）
+    # 用于增量跳过判定：本地 local_end >= end 目标索引即视为 up_to_date。
+    end_idx_in_cal = None
+    for ts_idx, ts in enumerate(cal_timestamps):
+        if ts.startswith(end_ts_prefix):
+            end_idx_in_cal = ts_idx  # 取 end 当天的最后一条
+    if end_idx_in_cal is None:
+        # end 当天在整个日历之后（超出已生成日历范围），无法判定，退化为不跳过
+        end_idx_in_cal = len(cal_timestamps)
+    # 容差：end 当天可能停牌（本地无该日数据），放宽到「覆盖到 end 前一天」即可
+    # bars_per_day 即该 freq 每个交易日的时间戳条数
+    bars_per_day_map = {"1min": 240, "5min": 48, "15min": 16, "30min": 8, "60min": 4}
+    end_tolerance = bars_per_day_map.get(freq, 48)
+
     status = {}
     total = len(stocks)
     success = 0
@@ -216,12 +234,13 @@ def download_min_kline(start: str, end: str, pool: str, freq: str = "1min", incr
         if incremental:
             local_start, local_end = converter.check_local_coverage(code, freq=freq, qlib_dir=qlib_dir)
             if local_start is not None and local_end is not None:
-                if local_end < len(cal_timestamps):
-                    last_ts = cal_timestamps[local_end]
-                    if last_ts.startswith(end_ts_prefix):
-                        status[code] = "up_to_date"
-                        skipped += 1
-                        continue
+                # 本地已覆盖到 end 当天（或前一天，容许 end 当天停牌）即视为 up_to_date。
+                # 原实现用 last_ts.startswith(end_ts_prefix) 判断，停牌股本地永远缺 end
+                # 当天时间戳，导致每次运行都重复全量下载。
+                if local_end >= end_idx_in_cal - end_tolerance:
+                    status[code] = "up_to_date"
+                    skipped += 1
+                    continue
 
         count = -1500
         kline_data = fetcher.fetch_min_kline(code, freq=freq, count=count, market=market, pages=pages, adjust=adjust)
