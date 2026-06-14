@@ -17,13 +17,13 @@ class TestPackageStructure:
         assert hasattr(kline_fetcher, "ConceptPlateFetcher")
         assert hasattr(kline_fetcher, "KLineToQlib")
         assert hasattr(kline_fetcher, "AdjustType")
-        assert kline_fetcher.__version__ == "2.1.0"
+        assert kline_fetcher.__version__ == "3.0.0"
 
     def test_all_exports(self):
         import kline_fetcher
         assert set(kline_fetcher.__all__) == {
             "KLineFetcher", "MinKLineFetcher", "ConceptPlateFetcher",
-            "KLineToQlib", "AdjustType",
+            "TrendFetcher", "KLineToQlib", "AdjustType",
         }
 
     def test_inheritance_chain(self):
