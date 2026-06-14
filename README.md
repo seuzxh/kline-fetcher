@@ -26,6 +26,7 @@ min_data = min_fetcher.fetch_min_kline("600519", freq="5min", count=10)
 **核心能力**：
 - 日 K 线数据获取（支持 `begindate`/`enddate` 日期范围查询，突破 1500 条限制）
 - 高频 K 线数据获取（1min/5min/15min/30min/60min，支持 `locator` 自动翻页），见 `MinKLineFetcher`
+- 分时数据获取（集合竞价 + 盘中分时），见 `TrendFetcher`
 - 自动转换为 qlib bin 格式（对齐交易日历，支持追加/覆盖写入）
 - 增量更新（检查本地覆盖范围，仅下载缺失部分）
 - 大范围日 K 自动分段下载（>1500 条自动拆分）
@@ -36,6 +37,7 @@ min_data = min_fetcher.fetch_min_kline("600519", freq="5min", count=10)
 
 **扩展功能**：
 - 支持概念板块数据获取（详见「概念板块相关方法」）
+- 支持分时数据获取（集合竞价 + 盘中分时，详见「分时数据相关方法」）
 
 ## 目录结构
 
@@ -58,6 +60,7 @@ kline-fetcher/                    # 包项目根目录
     ├── _base.py                  # KLineFetcher 基类（共享底座 + 日K方法）
     ├── min_kline.py              # MinKLineFetcher(KLineFetcher) — 分钟K线方法
     ├── concept_plate.py          # ConceptPlateFetcher(KLineFetcher) — 概念板块方法
+    ├── trend.py                  # TrendFetcher(KLineFetcher) — 分时数据方法（集合竞价+盘中）
     ├── fetcher.py                # 兼容垫片（v2.1.0 前的单文件实现已拆分，保留旧导入路径）
     ├── converter.py              # KLineToQlib — 数据转换为 qlib bin 格式
     ├── download.py               # CLI 批量下载入口
@@ -418,6 +421,104 @@ fetcher = ConceptPlateFetcher()
 plates = fetcher.get_stock_concept_plates("600519", market=1)
 if plates:
     print(f"股票所属概念板块: {[plate['name'] for plate in plates]}")
+```
+
+---
+
+## 类：TrendFetcher（分时数据）
+
+**用途**：获取股票分时数据，包括集合竞价（09:15-09:25）和盘中分时（09:30-15:00）。
+
+### 构造函数
+
+```python
+TrendFetcher(config_path: Optional[str] = None)
+```
+
+### 核心方法
+
+#### `fetch_intraday_trend` — 获取当日分时数据
+
+```python
+def fetch_intraday_trend(self, code: str, market: Optional[int] = None) -> Optional[Dict]
+```
+
+**参数**：
+- `code`：股票代码（纯数字）
+- `market`：市场编号，None 则自动推断
+
+**返回值**：字典包含 `market_date`、`pre_market`（集合竞价）、`trading`（盘中）
+
+#### `fetch_history_trend` — 获取历史分时数据
+
+```python
+def fetch_history_trend(self, code: str, date: str, market: Optional[int] = None) -> Optional[Dict]
+```
+
+**参数**：
+- `code`：股票代码（纯数字）
+- `date`：历史日期（"YYYYMMDD" 格式）
+- `market`：市场编号，None 则自动推断
+
+**返回值**：字典包含 `market_date`、`pre_market`、`trading`
+
+#### `fetch_trend` — 自动判断当日/历史
+
+```python
+def fetch_trend(self, code: str, date: Optional[str] = None, market: Optional[int] = None) -> Optional[Dict]
+```
+
+**逻辑**：`date` 为 None 或 "0" 时获取当日数据，否则获取历史数据。
+
+### 返回数据结构
+
+```python
+{
+    "market_date": "20260612",
+    "pre_market": [  # 集合竞价（09:15-09:25）
+        {
+            "date": "2026-06-12",
+            "time": "09:25:00",
+            "ref_price": 19.27,        # 参考价格（元）
+            "matched_vol": 639300,     # 匹配成交量（股）
+            "non_matched_vol_buy": 3800,
+            "non_matched_vol_sell": 0,
+            "phase": "pre-market"
+        }
+    ],
+    "trading": [     # 盘中数据（09:30-15:00）
+        {
+            "date": "2026-06-12",
+            "time": "09:30:00",
+            "last_price": 19.27,       # 最新价（元）
+            "avg_price": 19.27,        # 均价（元）
+            "volume": 639300,          # 成交量（股）
+            "turnover": 123456789.0,   # 成交额（元）
+            "phase": "trading"
+        }
+    ]
+}
+```
+
+**示例**：
+
+```python
+from kline_fetcher import TrendFetcher
+fetcher = TrendFetcher()
+
+# 获取当日分时
+data = fetcher.fetch_intraday_trend("601688")
+if data:
+    print(f"集合竞价数据: {len(data['pre_market'])} 条")
+    print(f"盘中数据: {len(data['trading'])} 条")
+    
+    # 查看集合竞价结果
+    if data['pre_market']:
+        auction = data['pre_market'][-1]
+        print(f"开盘参考价: {auction['ref_price']}")
+
+# 获取历史分时
+data = fetcher.fetch_history_trend("601688", "20260611")
 ```
 
 ---

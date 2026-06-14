@@ -8,10 +8,11 @@ kline-fetcher 是一个 A 股 K 线数据获取与 Qlib 格式转换工具（v2.
 
 ```
 kline_fetcher/
-├── __init__.py          # 包入口，导出 KLineFetcher, MinKLineFetcher, ConceptPlateFetcher, KLineToQlib, AdjustType
+├── __init__.py          # 包入口，导出 KLineFetcher, MinKLineFetcher, ConceptPlateFetcher, TrendFetcher, KLineToQlib, AdjustType
 ├── _base.py             # KLineFetcher 基类：共享底座（请求/参数/解析/单位换算）+ 日K方法
 ├── min_kline.py         # MinKLineFetcher(KLineFetcher)：分钟K线方法
 ├── concept_plate.py     # ConceptPlateFetcher(KLineFetcher)：概念板块方法
+├── trend.py             # TrendFetcher(KLineFetcher)：分时数据（集合竞价+盘中）
 ├── fetcher.py           # 兼容垫片（v2.1.0 前的单文件实现已拆分，保留旧导入路径）
 ├── converter.py         # 转换层：K线数据 → qlib bin 格式
 ├── download.py          # 批量下载入口 + CLI
@@ -19,13 +20,14 @@ kline_fetcher/
     └── kline_config.yaml # 默认配置
 ```
 
-数据流：`API → _base.py/min_kline.py/concept_plate.py (获取+单位转换) → download.py (批量调度) → converter.py (对齐日历+写入bin)`
+数据流：`API → _base.py/min_kline.py/concept_plate.py/trend.py (获取+单位转换) → download.py (批量调度) → converter.py (对齐日历+写入bin)`
 
 **类继承结构**（v2.1.0）：
 ```
 KLineFetcher (_base.py)               ← 共享底座 + 日K方法
   ├── MinKLineFetcher (min_kline.py)       ← 继承，加分钟K方法
-  └── ConceptPlateFetcher (concept_plate.py) ← 继承，加概念板块方法
+  ├── ConceptPlateFetcher (concept_plate.py) ← 继承，加概念板块方法
+  └── TrendFetcher (trend.py)              ← 继承，加分时数据方法
 ```
 
 ## 核心类
@@ -70,11 +72,61 @@ KLineFetcher (_base.py)               ← 共享底座 + 日K方法
 | `get_concept_plate_stocks(plate_code, start, count)` | 获取板块成份股 | `List[Dict]` 或 `None` |
 | `get_stock_concept_plates(code, market)` | 获取股票所属板块 | `List[Dict]` 或 `None` |
 
+### TrendFetcher (trend.py) — 分时数据
+
+继承 `KLineFetcher`，专注分时数据获取：集合竞价（CallTrend，09:15-09:25）和盘中分时（TrendOp，09:30-15:00）。
+
+**关键方法**：
+
+| 方法 | 用途 | 返回值 |
+|------|------|--------|
+| `fetch_intraday_trend(code, market)` | 获取当日分时数据 | `Dict` 或 `None` |
+| `fetch_history_trend(code, date, market)` | 获取历史分时数据 | `Dict` 或 `None` |
+| `fetch_trend(code, date, market)` | 自动判断当日/历史 | `Dict` 或 `None` |
+
+**分时数据返回结构**：
+```python
+{
+    "market_date": "20260612",           # 市场日期
+    "pre_market": [                      # 盘前集合竞价数据（09:15-09:25）
+        {
+            "date": "2026-06-12",
+            "time": "09:25:00",
+            "ref_price": 19.27,          # 参考价格（元）
+            "matched_vol": 639300,       # 匹配成交量（股）
+            "non_matched_vol_buy": 3800, # 未匹配买单量（股）
+            "non_matched_vol_sell": 0,   # 未匹配卖单量（股）
+            "phase": "pre-market"
+        }
+    ],
+    "trading": [                         # 盘中数据（09:30-15:00）
+        {
+            "date": "2026-06-12",
+            "time": "09:30:00",
+            "last_price": 19.27,         # 最新价（元）
+            "avg_price": 19.27,          # 均价（元）
+            "volume": 639300,            # 成交量（股）
+            "turnover": 123456789.0,     # 成交额（元）
+            "phase": "trading"
+        }
+    ]
+}
+```
+
+**分时数据获取规则**：
+
+| 类型 | date参数 | daycount参数 | 说明 |
+|------|----------|-------------|------|
+| 当日分时 | 0 | 0 | 获取当日实时分时数据 |
+| 历史分时 | YYYYMMDD | 1 | 获取指定日期历史分时 |
+
+**API 参数**：`Action=10001`, `trendtypes=-1`（盘前/盘中/盘后整体分时）
+
 ### 导入方式
 
 ```python
 # 推荐（v2.1.0+）：按需从包入口导入
-from kline_fetcher import KLineFetcher, MinKLineFetcher, ConceptPlateFetcher
+from kline_fetcher import KLineFetcher, MinKLineFetcher, ConceptPlateFetcher, TrendFetcher
 
 # 兼容（v2.1.0 前）：旧路径仍可用，fetcher.py 为兼容垫片
 from kline_fetcher.fetcher import KLineFetcher  # 仅基类（日K方法）
@@ -273,6 +325,16 @@ qlib_fields:                             # 写入 qlib 的字段列表
 
 ## 版本变更记录
 
+### v2.1.1（新增分时数据功能，向后兼容）
+
+1. **新增分时数据模块**：新增 `trend.py`，引入 `TrendFetcher` 类，支持：
+   - `fetch_intraday_trend()`：获取当日分时数据（集合竞价+盘中）
+   - `fetch_history_trend(code, date)`：获取历史分时数据
+   - `fetch_trend(code, date)`：自动判断当日/历史
+2. **分时数据结构**：返回 `{"market_date", "pre_market", "trading"}`，包含集合竞价（09:15-09:25）和盘中（09:30-15:00）数据
+3. **API 参数**：`Action=10001`, `trendtypes=-1`（盘前/盘中/盘后整体分时）
+4. **当日/历史区分**：`date=0, daycount=0` 为当日分时；`date=YYYYMMDD, daycount=1` 为历史分时
+
 ### v2.1.0（架构变更，向后兼容）
 
 1. **分钟K线从日K剥离**：原 `fetcher.py`（792 行单文件）拆分为 `_base.py` / `min_kline.py` / `concept_plate.py`，引入 `MinKLineFetcher` 和 `ConceptPlateFetcher` 两个子类
@@ -280,7 +342,6 @@ qlib_fields:                             # 写入 qlib 的字段列表
 3. **唯一破坏**：`KLineFetcher().get_all_concept_plates()` 等概念板块方法需改用 `ConceptPlateFetcher`；`fetch_min_kline` 需改用 `MinKLineFetcher`
 4. 删除失效的 `fetch_kline` 方法（返回数据自带时间字段，客户端可自行切片）
 5. 数据单位换算经实测确认（价格÷1e6、成交额÷1e4、成交量已是股），见 `_base.py` 注释
-4. 数据单位换算经实测确认（价格÷1e6、成交额÷1e4、成交量已是股），见 `_base.py` 注释
 
 ### v2.0.0（不兼容变更）
 
