@@ -78,6 +78,49 @@ class TestKLineFetcherDay:
         assert KLineFetcher.infer_market("600519") == 1
         assert KLineFetcher.infer_market("000001") == 0
 
+    def test_fetch_day_kline_adjust_qfq(self, day_fetcher):
+        """前复权数据可获取。"""
+        data = day_fetcher.fetch_day_kline(TEST_CODE, count=-3, market=TEST_MARKET, adjust="qfq")
+        assert data is not None and len(data) > 0
+
+    def test_fetch_day_kline_adjust_hfq(self, day_fetcher):
+        """后复权数据可获取。"""
+        data = day_fetcher.fetch_day_kline(TEST_CODE, count=-3, market=TEST_MARKET, adjust="hfq")
+        assert data is not None and len(data) > 0
+
+    def test_fetch_day_kline_adjust_none(self, day_fetcher):
+        """不复权数据可获取。"""
+        data = day_fetcher.fetch_day_kline(TEST_CODE, count=-3, market=TEST_MARKET, adjust="none")
+        assert data is not None and len(data) > 0
+
+    def test_hfq_price_ge_none_price(self, day_fetcher):
+        """后复权价 >= 不复权价（历史分红送股使后复权价更高或相等）。"""
+        hfq = day_fetcher.fetch_day_kline(TEST_CODE, count=-1, market=TEST_MARKET, adjust="hfq")
+        none = day_fetcher.fetch_day_kline(TEST_CODE, count=-1, market=TEST_MARKET, adjust="none")
+        if hfq and none and none[-1]["close"] > 0:
+            assert hfq[-1]["close"] >= none[-1]["close"]
+
+    def test_fetch_day_kline_invalid_code(self, day_fetcher):
+        """无效股票代码应优雅返回 None，不抛异常。"""
+        data = day_fetcher.fetch_day_kline("99999999", count=-3, market=TEST_MARKET, adjust="none")
+        assert data is None or data == []
+
+    def test_fetch_trade_calendar(self, day_fetcher):
+        """交易日历可获取（取近一年，避免过久）。"""
+        cal = day_fetcher.fetch_trade_calendar(start_year=2026, end_year=2026)
+        assert cal is not None
+        assert len(cal) > 0
+        assert all(isinstance(d, str) for d in cal)
+        assert all(len(d) == 10 for d in cal)  # yyyy-mm-dd
+
+    def test_infer_market_all_prefixes(self):
+        """infer_market 覆盖所有市场前缀。"""
+        assert KLineFetcher.infer_market("SH600519") == 1
+        assert KLineFetcher.infer_market("sz000001") == 0
+        assert KLineFetcher.infer_market("Bj830799") == 103
+        assert KLineFetcher.infer_market("688981") == 1   # 科创板
+        assert KLineFetcher.infer_market("300750") == 0   # 创业板
+
 
 # ============ 2. MinKLineFetcher（分钟K）============
 
@@ -102,6 +145,42 @@ class TestMinKLineFetcher:
     def test_inherited_day_kline(self, min_fetcher):
         """MinKLineFetcher 继承基类的日K方法。"""
         data = min_fetcher.fetch_day_kline(TEST_CODE, count=-1, market=TEST_MARKET, adjust="none")
+        assert data is not None and len(data) > 0
+
+    def test_fetch_min_kline_15min(self, min_fetcher):
+        """15min 频率可获取。"""
+        data = min_fetcher.fetch_min_kline(TEST_CODE, freq="15min", count=-5, market=TEST_MARKET)
+        assert data is not None and len(data) > 0
+
+    def test_fetch_min_kline_30min(self, min_fetcher):
+        """30min 频率可获取。"""
+        data = min_fetcher.fetch_min_kline(TEST_CODE, freq="30min", count=-5, market=TEST_MARKET)
+        assert data is not None and len(data) > 0
+
+    def test_fetch_min_kline_60min(self, min_fetcher):
+        """60min 频率可获取。"""
+        data = min_fetcher.fetch_min_kline(TEST_CODE, freq="60min", count=-5, market=TEST_MARKET)
+        assert data is not None and len(data) > 0
+
+    def test_fetch_min_kline_adjust_hfq(self, min_fetcher):
+        """分钟K线支持后复权。"""
+        data = min_fetcher.fetch_min_kline(TEST_CODE, freq="5min", count=-3,
+                                           market=TEST_MARKET, adjust="hfq")
+        assert data is not None and len(data) > 0
+
+    def test_fetch_min_kline_invalid_freq(self, min_fetcher):
+        """无效 freq 应优雅返回 None。"""
+        data = min_fetcher.fetch_min_kline(TEST_CODE, freq="invalid", count=-3, market=TEST_MARKET)
+        assert data is None
+
+    def test_fetch_min_kline_invalid_code(self, min_fetcher):
+        """无效股票代码应优雅返回 None 或空。"""
+        data = min_fetcher.fetch_min_kline("99999999", freq="5min", count=-3, market=TEST_MARKET)
+        assert data is None or len(data) == 0
+
+    def test_fetch_min_kline_market_inference(self, min_fetcher):
+        """market=None 时自动推断市场（不传 market）。"""
+        data = min_fetcher.fetch_min_kline(TEST_CODE, freq="5min", count=-3)
         assert data is not None and len(data) > 0
 
 
@@ -136,3 +215,26 @@ class TestConceptPlateFetcher:
         """ConceptPlateFetcher 继承基类的日K方法。"""
         data = plate_fetcher.fetch_day_kline(TEST_CODE, count=-1, market=TEST_MARKET, adjust="none")
         assert data is not None and len(data) > 0
+
+    def test_get_concept_plate_stocks_pagination(self, plate_fetcher):
+        """分页参数：start>0 取第二页。"""
+        page1 = plate_fetcher.get_concept_plate_stocks(TEST_PLATE, start=0, count=3)
+        page2 = plate_fetcher.get_concept_plate_stocks(TEST_PLATE, start=3, count=3)
+        if page1 and page2:
+            # 两页不应完全相同（除非成份股不足 3 只）
+            codes1 = {s["code"] for s in page1}
+            codes2 = {s["code"] for s in page2}
+            assert codes1 != codes2 or len(page1) < 3
+
+    def test_get_concept_plate_kline_fields(self, plate_fetcher):
+        """板块K线字段完整性。"""
+        data = plate_fetcher.get_concept_plate_kline(TEST_PLATE, count=-3)
+        if data:
+            required = ["date", "open", "high", "low", "close", "volume"]
+            assert all(k in data[-1] for k in required)
+
+    def test_get_all_concept_plates_market_value(self, plate_fetcher):
+        """所有板块的 market 字段应为 44（概念板块市场）。"""
+        plates = plate_fetcher.get_all_concept_plates()
+        if plates:
+            assert all(p.get("market") == 44 for p in plates[:10])

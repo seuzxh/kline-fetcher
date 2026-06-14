@@ -46,9 +46,13 @@ kline-fetcher/                    # 包项目根目录
 ├── AGENTS.md                     # 项目说明（给 AI 代理用）
 ├── tests/                        # 测试文件目录
 │   ├── __init__.py               # 测试包文件
-│   ├── test_append_bin.py        # _append_bin 单元测试
+│   ├── test_append_bin.py        # _append_bin 增量合并单元测试
+│   ├── test_build_min_arrays.py  # _build_min_arrays 缺 time 字段处理单元测试
+│   ├── test_factor_calc.py       # factor 数值正确性单元测试
+│   ├── test_calendar_generation.py # 日历边界（11:30/15:00）单元测试
+│   ├── test_structure.py         # 包结构/导入/静态方法单元测试
 │   ├── test_concept_plates.py    # 概念板块集成测试（需 API）
-│   └── test_split_interfaces.py  # 拆分后接口集成测试（需 API）
+│   └── test_split_interfaces.py  # 三类 fetcher 端到端集成测试（需 API）
 └── kline_fetcher/                # Python 包目录
     ├── __init__.py               # 导出公共 API（KLineFetcher/MinKLineFetcher/ConceptPlateFetcher/KLineToQlib/AdjustType）
     ├── _base.py                  # KLineFetcher 基类（共享底座 + 日K方法）
@@ -739,7 +743,11 @@ df = D.features(["SH600519"], ["$close"], start_time="2026-05-08", end_time="202
 pytest                      # 默认运行，跳过集成测试
 ```
 
-- `test_append_bin.py`：`_append_bin` 增量合并逻辑（7 个场景：新建/相邻/间隙/重叠/子集/前插）
+- `test_append_bin.py`：`_append_bin` 增量合并逻辑（9 个场景，含 NaN 保护）
+- `test_build_min_arrays.py`：`_build_min_arrays` 缺 time 字段处理（3 个）
+- `test_factor_calc.py`：factor 数值正确性（6 个，mock 输入）
+- `test_calendar_generation.py`：日历边界 11:30/15:00（13 个）
+- `test_structure.py`：包结构/导入路径/方法归属/静态方法（18 个）
 
 ### 集成测试（需真实 API，默认跳过）
 
@@ -749,8 +757,8 @@ export KLINE_API_BASE_URL=http://<your-api-host>:<port>
 pytest -m integration       # 显式启用集成测试
 ```
 
-- `test_concept_plates.py`：概念板块 4 个方法（unittest 风格）
-- `test_split_interfaces.py`：v2.1.0 拆分后三类（KLineFetcher/MinKLineFetcher/ConceptPlateFetcher）端到端验证（27 项，含字段完整性、继承关系、翻页等）
+- `test_split_interfaces.py`：三类（KLineFetcher/MinKLineFetcher/ConceptPlateFetcher）端到端验证（34 项，覆盖各复权方式、5 种频率、错误输入、字段完整性、继承关系等）
+- `test_concept_plates.py`：概念板块 4 个方法（unittest 风格，8 项 + 15 subtests）
 
 集成测试通过 `integration` marker 标记，默认 `addopts="-m 'not integration'"` 确保无 API 环境下 CI 不失败。
 

@@ -107,13 +107,14 @@
 - **保留此条仅作历史记录，无需处理。**
 
 ### #15 测试覆盖不足 🟡（部分改善）
-- **v2.1.0 现状**：`tests/` 有 6 个文件，34 个单元测试（默认运行）+ 26 个集成测试（需 API）：
+- **v2.1.0 现状**：`tests/` 有 7 个文件，49 个单元测试（默认运行）+ 42 个集成测试（需 API）：
   - `test_append_bin.py`：`_append_bin` 全场景（9 测试，含 #6/#7 NaN 保护）
   - `test_build_min_arrays.py`：`_build_min_arrays` 缺 time 字段处理（3 测试，#3）
-  - `test_factor_calc.py`：**新增**，factor 数值正确性（6 测试，mock 输入无需 API）
-  - `test_calendar_generation.py`：**新增**，日历边界 11:30/15:00（13 测试，#9）
-  - `test_concept_plates.py`：概念板块集成测试（默认跳过）
-  - `test_split_interfaces.py`：三类 fetcher 端到端集成测试（默认跳过）
+  - `test_factor_calc.py`：factor 数值正确性（6 测试，mock 输入无需 API）
+  - `test_calendar_generation.py`：日历边界 11:30/15:00（13 测试，#9）
+  - `test_structure.py`：包结构/导入/方法归属/静态方法（18 测试，无需 API）
+  - `test_concept_plates.py`：概念板块集成测试（8 测试 + 15 subtests，默认跳过）
+  - `test_split_interfaces.py`：三类 fetcher 端到端集成测试（34 测试，覆盖各复权方式、5 种频率、错误输入等，默认跳过）
 - **已覆盖**（本次新增）：
   - ✅ factor 数值正确性（factor = hfq_close/none_close、volume 调整、NaN 边界）
   - ✅ 日历生成边界（含 11:30/15:00、条数、连续性）
