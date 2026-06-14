@@ -118,12 +118,22 @@
 
 ## ⚠️ 待核实（依赖中焯 API 能力）
 
-### #1 `fetch_kline` 失效 ⚠️
-- **位置**：`kline_fetcher/min_kline.py:108-159`（从 fetcher.py:378 迁来，方法体逐行一致，仅新增 docstring）
-- **现象**：`count=-1500` 写死，`starttime` 仅用于在最近 1500 根里切片定位（min_kline.py:138-150），**没有传给 API 定位翻页**。对 1min（约 6 个交易日）超出 1500 根即返回 None。`test_split_interfaces.py:107` 的 `test_fetch_kline_callable` 把「可能返回 None」当作预期固化了。
-- **待核实**：需确认中焯 API 是否支持按 `starttime` 定位翻页。若支持，方法可修复；若不支持，应标记 deprecated 或删除。
-- **v2.1.0 改善**：docstring 已明确标注「分钟K专用」，至少不再误导用户当通用入口用。
-- **工作量**：待定（取决于 API 能力）
+### #1 `fetch_kline` 失效 ⚠️（已实测确认）
+- **位置**：`kline_fetcher/min_kline.py:108-159`
+- **实测结论**（2026-06-14，5min 茅台 600519）：
+  | 用例 | starttime | count | 预期 | 实际 |
+  |---|---|---|---|---|
+  | 范围内 向后取 | 1周前 | +5 | 成功 | ✅ 成功 |
+  | 超范围 向后取 | 2个月前 | +5 | 失败 | ❗ **返回最近5条（误定位）** |
+  | 范围内 向前取 | 3天前 | -5 | 成功 | ✅ 成功 |
+  | 超范围 向前取 | 3个月前 | -5 | 失败 | ✅ None |
+- **真实失效模式**（比原描述更隐蔽）：
+  - `count >= 0`（向后取）：starttime 过早时**不返回 None**，而是误定位到数据开头，返回最近的数据。用户会误以为拿到了目标时间段。
+  - `count < 0`（向前取）：starttime 过早时返回 None。
+- **根因**：`starttime` 没传给 API 做定位，仅用于本地切片。`pages` 算了但 locator 翻页方向不对（从最新向前翻，无法定位到任意 starttime）。
+- **修复方向**：依赖中焯 API 是否支持按 starttime 定位。若不支持，建议**废弃此方法**（deprecate），引导用户用 `fetch_min_kline` + 客户端切片。
+- **v2.1.0 改善**：docstring 已标注「分钟K专用」。
+- **工作量**：待定（取决于 API 能力与废弃决策）
 
 ---
 
