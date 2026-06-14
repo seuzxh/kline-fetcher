@@ -22,6 +22,18 @@ from typing import Dict, List, Optional
 import requests
 import yaml
 
+__all__ = [
+    "AdjustType",
+    "ADJUST_MAP",
+    "_resolve_adjust",
+    "PRICE_SCALE",
+    "TURNOVER_SCALE",
+    "MARKET_CODE_MAP",
+    "KLINE_TYPE_MAP",
+    "KLINE_RESPONSE_KEY_MAP",
+    "KLineFetcher",
+]
+
 _PACKAGE_DIR = os.path.dirname(os.path.abspath(__file__))
 _DEFAULT_CONFIG = os.path.join(_PACKAGE_DIR, "config", "kline_config.yaml")
 
@@ -210,12 +222,12 @@ class KLineFetcher:
         return round(raw / PRICE_SCALE, 4)
 
     @staticmethod
-    def _convert_volume(raw: int, stocks_per_h: int = 100) -> float:
+    def _convert_volume(raw: int) -> float:
         """成交量：中焯 PeriodVolume 原始单位即「股」，直接使用。
 
         实测确认（2026-06，贵州茅台 600519 对照东财/新浪公开基准，
         中焯值/新浪值 = 1.0000；成交额÷成交量≈股价，自洽）：单位为「股」，
-        无需按「手→股」做 ×100 换算。`stocks_per_h` 参数保留但当前不参与换算。
+        无需按「手→股」做 ×100 换算。
         """
         return float(raw)
 
@@ -235,7 +247,7 @@ class KLineFetcher:
             return {"date": date, "time": t}
         return {"date": date, "time": None}
 
-    def _parse_kline_items(self, data_list: list, klinetype: str, stocks_per_h: int = 100) -> List[Dict]:
+    def _parse_kline_items(self, data_list: list, klinetype: str) -> List[Dict]:
         result = []
         for item in data_list:
             if not isinstance(item, dict):
@@ -250,7 +262,7 @@ class KLineFetcher:
                 "high": self._convert_price(item.get("HighPrice", 0)),
                 "low": self._convert_price(item.get("LowPrice", 0)),
                 "close": self._convert_price(item.get("ClosePrice", 0)),
-                "volume": self._convert_volume(item.get("PeriodVolume", 0), stocks_per_h),
+                "volume": self._convert_volume(item.get("PeriodVolume", 0)),
                 "amount": self._convert_turnover(item.get("PeriodTurnover", 0)),
             }
 
@@ -260,14 +272,6 @@ class KLineFetcher:
             result.append(row)
 
         return result
-
-    @staticmethod
-    def _extract_stocks_per_h(raw: Dict, default: int = 100) -> int:
-        """从响应中提取 StocksPerH（可能是单值或列表，统一取首元素并 int 化）。"""
-        stocks_per_h = raw.get("StocksPerH", default)
-        if isinstance(stocks_per_h, list) and stocks_per_h:
-            stocks_per_h = stocks_per_h[0]
-        return int(stocks_per_h) if stocks_per_h else default
 
     # ===== 日K线方法 =====
 
@@ -299,8 +303,7 @@ class KLineFetcher:
             self.logger.warning(f"Empty DayKLine for code={code}")
             return None
 
-        stocks_per_h = self._extract_stocks_per_h(raw)
-        return self._parse_kline_items(data_list[0], klinetype, stocks_per_h)
+        return self._parse_kline_items(data_list[0], klinetype)
 
     def fetch_day_kline_with_factor(self, code: str, count: Optional[int] = None, market: Optional[int] = None, begindate: Optional[str] = None, enddate: Optional[str] = None) -> Optional[List[Dict]]:
         hfq_data = self.fetch_day_kline(code, count=count, market=market, begindate=begindate, enddate=enddate, adjust="hfq")

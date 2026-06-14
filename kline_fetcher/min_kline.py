@@ -11,6 +11,8 @@ from typing import Dict, List, Optional
 
 from kline_fetcher._base import KLineFetcher, KLINE_TYPE_MAP, KLINE_RESPONSE_KEY_MAP
 
+__all__ = ["MinKLineFetcher"]
+
 
 class MinKLineFetcher(KLineFetcher):
     """分钟K线获取客户端。
@@ -51,12 +53,10 @@ class MinKLineFetcher(KLineFetcher):
                 self.logger.warning(f"Empty {response_key} for code={code}")
                 return None
 
-            stocks_per_h = self._extract_stocks_per_h(raw)
-            return self._parse_kline_items(data_list[0], klinetype, stocks_per_h)
+            return self._parse_kline_items(data_list[0], klinetype)
 
         all_data = []
         locator = None
-        stocks_per_h = 100
 
         for page in range(pages):
             page_params = dict(params)
@@ -77,11 +77,7 @@ class MinKLineFetcher(KLineFetcher):
                 self.logger.info(f"Empty {response_key} for code={code} at page {page + 1}, stopping pagination")
                 break
 
-            sp_h = self._extract_stocks_per_h(raw)
-            if page == 0:
-                stocks_per_h = sp_h
-
-            parsed = self._parse_kline_items(data_list[0], klinetype, stocks_per_h)
+            parsed = self._parse_kline_items(data_list[0], klinetype)
             if not parsed:
                 break
             all_data.extend(parsed)

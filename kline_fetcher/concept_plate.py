@@ -10,6 +10,8 @@ from typing import Dict, List, Optional
 
 from kline_fetcher._base import KLineFetcher, KLINE_RESPONSE_KEY_MAP
 
+__all__ = ["ConceptPlateFetcher"]
+
 
 class ConceptPlateFetcher(KLineFetcher):
     """概念板块数据获取客户端。
@@ -130,8 +132,7 @@ class ConceptPlateFetcher(KLineFetcher):
             self.logger.warning(f"Empty {response_key} for plate_code={plate_code}")
             return None
 
-        stocks_per_h = self._extract_stocks_per_h(raw)
-        return self._parse_kline_items(data_list[0], klinetype, stocks_per_h)
+        return self._parse_kline_items(data_list[0], klinetype)
 
     def get_concept_plate_stocks(self, plate_code: str, start: int = 0, count: int = 10) -> Optional[List[Dict]]:
         """获取指定概念板块的成份股列表。
