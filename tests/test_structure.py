@@ -17,7 +17,7 @@ class TestPackageStructure:
         assert hasattr(kline_fetcher, "ConceptPlateFetcher")
         assert hasattr(kline_fetcher, "KLineToQlib")
         assert hasattr(kline_fetcher, "AdjustType")
-        assert kline_fetcher.__version__ == "3.0.0"
+        assert kline_fetcher.__version__ == "3.0.1"
 
     def test_all_exports(self):
         import kline_fetcher

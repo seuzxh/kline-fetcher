@@ -117,25 +117,27 @@ class KLineToQlib:
 
     @staticmethod
     def _generate_1min_timestamps(date: str, bpd: int, freq: str) -> List[str]:
-        """生成 1min 日历时间戳。
+        """生成 1min 日历时间戳（240 条）。
 
-        中焯 API 用「周期结束时刻」标记每根K线：09:31、11:30、13:01、15:00。
-        因此日历需含 11:30（上午收盘）和 15:00（全天收盘），否则这两根数据会丢失。
-        不含 09:30/13:00（开盘瞬间归到下一根），日历保留这两点无害（该位置无数据，留 NaN）。
+        中焯 API 用「周期结束时刻」标记每根K线：09:31~11:30、13:01~15:00。
+        API 不返回 09:30 和 13:00 的数据，日历从 09:31/13:01 起以对齐实际数据。
+        保留 11:30（上午收盘）和 15:00（全天收盘）。
         """
         timestamps = []
-        # 上午 09:30~11:30（中焯标为 09:31~11:30，日历从 09:30 起以对齐序列）
+        # 上午 09:31~11:30
         for h in range(9, 12):
             for m in range(0, 60):
-                if h == 9 and m < 30:
+                if h == 9 and m < 31:
                     continue
-                if h == 11 and m > 30:  # 含 11:30（上午收盘），排除 11:31+
+                if h == 11 and m > 30:
                     continue
                 timestamps.append(f"{date} {h:02d}:{m:02d}:00")
-        # 下午 13:00~15:00（中焯标为 13:01~15:00，日历从 13:00 起）
+        # 下午 13:01~15:00
         for h in range(13, 16):
             for m in range(0, 60):
-                if h == 15 and m > 0:  # 只含 15:00（全天收盘），排除 15:01+
+                if h == 13 and m < 1:
+                    continue
+                if h == 15 and m > 0:
                     continue
                 timestamps.append(f"{date} {h:02d}:{m:02d}:00")
         return timestamps

@@ -2,6 +2,18 @@
 
 本文件记录 kline-fetcher 的版本变更。格式遵循 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
+## [3.0.1] - 2026-07-06
+
+### 🐛 Bug 修复
+
+- **1min 日历对齐**：`_generate_1min_timestamps` 从 242 条改为 240 条（去掉 `09:30` 和 `13:00`），与中焯 API 实际返回数据对齐。API 不返回这两个时刻的数据，日历保留会导致对应位置永远写入 NaN。
+
+### 🧪 测试
+
+- 更新 `test_calendar_generation.py`：1min 断言 242→240，`09:30`/`13:00` 从"应包含"改为"不应包含"
+
+---
+
 ## [3.0.0] - 2026-06-14
 
 相较于 v2.0.2，本版本包含**破坏性 API 变更**（主版本号 +1）、**架构重构**、**新功能**和多个 **bug 修复**。

@@ -4,8 +4,8 @@
 
 验证 _generate_1min_timestamps / _generate_5min_timestamps 生成的时刻集合：
 - 含 11:30（上午收盘）、15:00（全天收盘）—— #9 修复的关键
-- 含 09:30、13:00（开盘瞬间，中焯不返回但日历保留无害）
-- 条数正确（1min=242, 5min=50）
+- 不含 09:30、13:00（API 不返回这两个时刻数据）
+- 条数正确（1min=240, 5min=50）
 """
 import pytest
 
@@ -19,9 +19,9 @@ class TestGenerate1minTimestamps:
         return KLineToQlib._generate_1min_timestamps(DATE, 240, "1min")
 
     def test_count(self):
-        """1min 每天 242 条（09:30~11:30 = 121, 13:00~15:00 = 121）。"""
+        """1min 每天 240 条（09:31~11:30 = 120, 13:01~15:00 = 120）。"""
         ts = self.gen()
-        assert len(ts) == 242, f"期望 242 条，实际 {len(ts)}"
+        assert len(ts) == 240, f"期望 240 条，实际 {len(ts)}"
 
     def test_contains_morning_close_1130(self):
         """含 11:30（上午收盘）—— #9 修复关键。"""
@@ -33,15 +33,15 @@ class TestGenerate1minTimestamps:
         ts = self.gen()
         assert f"{DATE} 15:00:00" in ts, "应含 15:00 全天收盘"
 
-    def test_contains_open_0930(self):
-        """含 09:30（开盘瞬间，中焯不返回但日历保留）。"""
+    def test_not_contains_open_0930(self):
+        """不含 09:30（API 不返回该时刻数据）。"""
         ts = self.gen()
-        assert f"{DATE} 09:30:00" in ts
+        assert f"{DATE} 09:30:00" not in ts
 
-    def test_contains_afternoon_open_1300(self):
-        """含 13:00（下午开盘瞬间）。"""
+    def test_not_contains_afternoon_open_1300(self):
+        """不含 13:00（API 不返回该时刻数据）。"""
         ts = self.gen()
-        assert f"{DATE} 13:00:00" in ts
+        assert f"{DATE} 13:00:00" not in ts
 
     def test_not_contains_after_1500(self):
         """不含 15:00 之后（如 15:01）。"""
@@ -63,12 +63,12 @@ class TestGenerate1minTimestamps:
             return h * 60 + m
 
         mins = [to_minutes(s) for s in ts]
-        # 上午段：09:30(570) ~ 11:30(690)，应连续
-        morning = [m for m in mins if 570 <= m <= 690]
-        assert morning == list(range(570, 691)), "上午段应 09:30~11:30 连续"
-        # 下午段：13:00(780) ~ 15:00(900)，应连续
-        afternoon = [m for m in mins if 780 <= m <= 900]
-        assert afternoon == list(range(780, 901)), "下午段应 13:00~15:00 连续"
+        # 上午段：09:31(571) ~ 11:30(690)，应连续
+        morning = [m for m in mins if 571 <= m <= 690]
+        assert morning == list(range(571, 691)), "上午段应 09:31~11:30 连续"
+        # 下午段：13:01(781) ~ 15:00(900)，应连续
+        afternoon = [m for m in mins if 781 <= m <= 900]
+        assert afternoon == list(range(781, 901)), "下午段应 13:01~15:00 连续"
 
 
 class TestGenerate5minTimestamps:
