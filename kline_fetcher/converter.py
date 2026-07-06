@@ -410,7 +410,14 @@ class KLineToQlib:
         full_data = np.hstack([np.array([data_start_idx], dtype="<f"), appended.astype("<f")])
         full_data.tofile(str(bin_path))
 
-    def check_local_coverage(self, code: str, field: str = "close", freq: str = "day", qlib_dir: Optional[str] = None) -> Tuple[Optional[int], Optional[int]]:
+    def check_local_coverage(self, code: str, field: str = "close", freq: str = "day", qlib_dir: Optional[str] = None, nan_aware: bool = False) -> Tuple[Optional[int], Optional[int]]:
+        """检查本地数据覆盖范围。
+
+        Args:
+            nan_aware: True 时 end_idx 基于最后一个非 NaN 槽（而非文件末尾），
+                       全 NaN 返回 (None, None)。用于检测被 NaN 拉长产生的伪覆盖
+                       （如 1min 日历已扩展但数据未下载的场景）。默认 False 保持原行为。
+        """
         qlib_dir = qlib_dir or self.code_to_qlib_dir(code)
         bin_path = os.path.join(self.features_dir, qlib_dir, f"{field}.{freq}.bin")
         if not os.path.exists(bin_path):
@@ -423,7 +430,15 @@ class KLineToQlib:
         if np.isnan(start_idx_raw) or np.isinf(start_idx_raw) or abs(start_idx_raw) > 1e10:
             return None, None
         start_idx = int(start_idx_raw)
-        end_idx = start_idx + len(raw[1:]) - 1
+        if not nan_aware:
+            end_idx = start_idx + len(raw[1:]) - 1
+            return start_idx, end_idx
+        # NaN-aware: end_idx 取最后一个非 NaN 槽；全 NaN 返回 None, None 触发重新下载
+        body = raw[1:]
+        valid_mask = ~np.isnan(body)
+        if not np.any(valid_mask):
+            return None, None
+        end_idx = start_idx + int(np.nonzero(valid_mask)[0][-1])
         return start_idx, end_idx
 
     def get_missing_range(self, code: str, start_date: str, end_date: str) -> Optional[Tuple[str, str]]:
