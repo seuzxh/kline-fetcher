@@ -107,16 +107,22 @@ fetcher.fetch_day_kline("sh000300")                  # ✅ 沪深300（前缀，
 
 ### ConceptPlateFetcher (concept_plate.py) — 概念板块
 
-继承 `KLineFetcher`，封装概念板块相关接口。
+继承 `KLineFetcher`，封装概念板块相关接口。**完整接口文档（含请求参数、响应字段、单位换算）见 [docs/concept_plate_api.md](docs/concept_plate_api.md)**。
 
 **关键方法**：
 
 | 方法 | 用途 | 返回值 |
 |------|------|--------|
-| `get_all_concept_plates()` | 获取所有概念板块 | `List[Dict]` 或 `None` |
+| `get_all_concept_plates()` | 获取概念板块列表 | `List[Dict]` 或 `None` |
 | `get_concept_plate_kline(plate_code, count, market)` | 获取板块K线 | `List[Dict]` 或 `None` |
 | `get_concept_plate_stocks(plate_code, start, count)` | 获取板块成份股 | `List[Dict]` 或 `None` |
-| `get_stock_concept_plates(code, market)` | 获取股票所属板块 | `List[Dict]` 或 `None` |
+| `get_stock_concept_plates(code, market)` | 获取股票所属板块 | `List[Dict]`（**实测恒为空**，见下） |
+
+**⚠️ 使用注意（2026-08 实测）**：
+- 概念板块市场代码固定 `market=44`，板块代码 `99xxxx`
+- `get_all_concept_plates()` **只返回按涨幅排序的前 30 个**（总数 `max=390`，单次 count 上限 100，取全量需按 `start` 翻页，示例见接口文档 1.4）
+- `get_concept_plate_stocks()` 返回**首项是板块自身**（`block.include=1` 所致），成份股需过滤 `market != 44`；响应 `max` 字段为成份股总数
+- `get_stock_concept_plates()` **实测不可用**：响应无板块字段，恒返回 `[]`；需要股票→板块映射请用「板块列表 + 成份股」反向构建
 
 ### TrendFetcher (trend.py) — 分时数据
 
