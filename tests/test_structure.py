@@ -122,6 +122,7 @@ class TestConverterStatics:
         assert KLineToQlib.code_to_qlib_dir("399001") == "sz399001"
         assert KLineToQlib.code_to_qlib_dir("399006") == "sz399006"
         assert KLineToQlib.code_to_qlib_dir("399999") == "sz399999"  # 399 前缀规则
+        assert KLineToQlib.code_to_qlib_dir("899050") == "bj899050"  # 北证50
         # 深市个股仍正确（不与指数白名单冲突的代码）
         assert KLineToQlib.code_to_qlib_dir("000002") == "sz000002"
 

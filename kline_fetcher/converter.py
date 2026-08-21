@@ -198,7 +198,8 @@ class KLineToQlib:
         # 白名单指数按其所属市场，399 开头按深市指数
         info = INDEX_CODE_MAP.get(numeric)
         if info is not None:
-            return ("sh" if info[1] == 1 else "sz") + numeric
+            prefix = {1: "sh", 0: "sz", 103: "bj"}[info[1]]
+            return prefix + numeric
         if numeric.startswith(INDEX_CODE_PREFIXES):
             return f"sz{numeric}"
         # 个股规则
