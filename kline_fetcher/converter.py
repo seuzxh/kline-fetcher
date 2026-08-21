@@ -10,6 +10,8 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
+from kline_fetcher._base import INDEX_CODE_MAP, INDEX_CODE_PREFIXES
+
 _DEFAULT_QLIB_DATA_DIR = os.environ.get(
     "QLIB_DATA_DIR",
     "/root/Projects/0.qlib_pro/qlib_data",
@@ -186,12 +188,20 @@ class KLineToQlib:
     def code_to_qlib_dir(code: str) -> str:
         upper = code.upper()
         if upper.startswith("SH"):
-            return f"sh{code.lstrip('SHsh')}"
+            return f"sh{code[2:]}"
         if upper.startswith("SZ"):
-            return f"sz{code.lstrip('SZsz')}"
+            return f"sz{code[2:]}"
         if upper.startswith("BJ"):
-            return f"bj{code.lstrip('BJbj')}"
-        numeric = code.lstrip("SHshSZszBJbj")
+            return f"bj{code[2:]}"
+        numeric = code
+        # 指数优先（与 KLineFetcher.infer_market 保持一致）：
+        # 白名单指数按其所属市场，399 开头按深市指数
+        info = INDEX_CODE_MAP.get(numeric)
+        if info is not None:
+            return ("sh" if info[1] == 1 else "sz") + numeric
+        if numeric.startswith(INDEX_CODE_PREFIXES):
+            return f"sz{numeric}"
+        # 个股规则
         if numeric.startswith(("600", "601", "603", "605", "688", "689")):
             return f"sh{code}"
         if numeric.startswith(("000", "001", "002", "003", "300", "301")):

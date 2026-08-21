@@ -76,7 +76,8 @@ class TestKLineFetcherDay:
 
     def test_infer_market_static(self):
         assert KLineFetcher.infer_market("600519") == 1
-        assert KLineFetcher.infer_market("000001") == 0
+        assert KLineFetcher.infer_market("000001") == 1  # 指数优先：上证指数
+        assert KLineFetcher.infer_market("sz000001") == 0  # 显式前缀：平安银行
 
     def test_fetch_day_kline_adjust_qfq(self, day_fetcher):
         """前复权数据可获取。"""

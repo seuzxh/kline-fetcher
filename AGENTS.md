@@ -44,8 +44,45 @@ KLineFetcher (_base.py)               ← 共享底座 + 日K方法
 | `fetch_day_kline_with_factor(code, count, market, begindate, enddate)` | 获取日K线（含factor计算） | `List[Dict]` 或 `None` |
 | `fetch_trade_calendar(start_year, end_year)` | 获取交易日历 | `List[str]` 或 `None` |
 | `get_stock_info(code, market)` | 获取股票基本信息 | `Dict` 或 `None` |
-| `infer_market(code)` (静态) | 推断市场代码 | `int` |
+| `infer_market(code)` (静态) | 推断市场代码（**指数优先**，见下方「指数行情使用注意」） | `int` |
+| `is_index(code)` / `get_index_info(code)` (静态) | 判断是否指数 / 取指数信息 | `bool` / `(name, market)` 或 `None` |
 | `_request`, `_build_params`, `_parse_kline_items`, `_convert_*` (内部) | 共享底座 | — |
+
+### 指数行情使用注意（重要）
+
+指数与个股共用同一套请求方法，差异只在**市场推断**。请求行情前代码会**优先判断指数，其次个股**（`infer_market` / `code_to_qlib_dir` 均遵循此顺序）。
+
+**支持的常见指数**（2026-08 实测：日K / 分钟K / 当日分时 / 历史分时 全部可获取）：
+
+| 指数 | 代码 | market | | 指数 | 代码 | market |
+|------|------|--------|---|------|------|--------|
+| 上证指数 | 000001 | 1 | | 深证成指 | 399001 | 0 |
+| 上证50 | 000016 | 1 | | 深证100 | 399004 | 0 |
+| 沪深300 | 000300 | 1 | | 创业板指 | 399006 | 0 |
+| 科创50 | 000688 | 1 | | （399 开头均视为深市指数） | | |
+| 中证500 | 000905 | 1 | | | | |
+| 中证800 | 000906 | 1 | | | | |
+| 中证1000 | 000852 | 1 | | | | |
+
+**⚠️ 代码歧义（最易踩坑）**：`000xxx` 指数代码与深市个股代码段重叠。裸码 `"000001"` 既是上证指数（沪）也是平安银行（深）。本项目规则是**指数优先**：
+
+```python
+# 裸码 → 按指数（上证指数，market=1 自动推断）
+fetcher.fetch_day_kline("000300")                    # ✅ 沪深300
+tf.fetch_history_trend("000300", date="20260820")    # ✅ 指数历史分时
+
+# 取深市个股（与指数代码重叠的）必须显式指定：
+fetcher.fetch_day_kline("sz000001")                  # ✅ 平安银行（显式前缀）
+fetcher.fetch_day_kline("000001", market=0)          # ✅ 平安银行（显式 market）
+
+# 显式 sh/sz/bj 前缀优先于指数白名单：
+fetcher.fetch_day_kline("sh000300")                  # ✅ 沪深300（前缀，无歧义）
+```
+
+**其他注意**：
+- 指数无复权概念，`adjust` 参数对指数无意义（传 `"none"` 或默认均可，实测不影响返回）
+- 指数写入 qlib 时目录按推断市场命名：`sh000300`（沪深300）、`sz399006`（创业板指）
+- 新增指数支持：向 `_base.py` 的 `INDEX_CODE_MAP` 添加 `{代码: (名称, market)}` 即可，`infer_market` / `code_to_qlib_dir` / `is_index` 自动生效
 
 ### MinKLineFetcher (min_kline.py) — 分钟K线
 
