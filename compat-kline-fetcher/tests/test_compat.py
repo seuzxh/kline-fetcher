@@ -46,6 +46,23 @@ class TestCompatShell:
         assert app is real_app
         assert callable(main)
 
+    def test_submodule_shims(self):
+        """_base/.min_kline/.concept_plate/.trend 四个子模块垫片与 tzt_api 指向同一对象。"""
+        from kline_fetcher._base import KLineFetcher, MARKET_CODE_MAP, INDEX_CODE_MAP
+        from kline_fetcher.min_kline import MinKLineFetcher
+        from kline_fetcher.concept_plate import ConceptPlateFetcher
+        from kline_fetcher.trend import TrendFetcher
+        from tzt_api._base import KLineFetcher as real_base, MARKET_CODE_MAP as real_mcm, INDEX_CODE_MAP as real_icm
+        from tzt_api.min_kline import MinKLineFetcher as real_min
+        from tzt_api.concept_plate import ConceptPlateFetcher as real_cp
+        from tzt_api.trend import TrendFetcher as real_trend
+        assert KLineFetcher is real_base
+        assert MARKET_CODE_MAP is real_mcm
+        assert INDEX_CODE_MAP is real_icm
+        assert MinKLineFetcher is real_min
+        assert ConceptPlateFetcher is real_cp
+        assert TrendFetcher is real_trend
+
     def test_old_semantics_unchanged(self):
         """指数优先等行为经兼容壳不变（抽样）。"""
         from kline_fetcher import KLineFetcher

@@ -29,7 +29,7 @@ MARKET_CODE_MAP = {
     "bj": 103,
 }
 
-# 反查表：市场代码 → qlib 目录前缀（kline_qlib.converter.code_to_qlib_dir 使用）
+# 反查表：市场代码 → qlib 目录前缀（下游 converter 的 code_to_qlib_dir 使用）
 MARKET_TO_PREFIX = {1: "sh", 0: "sz", 103: "bj"}
 
 # 常见指数代码表：{代码: (名称, 市场代码)}（2026-08 实测可获取日K/分钟K/分时/历史分时）。

@@ -887,7 +887,7 @@ df = D.features(["SH600519"], ["$close"], start_time="2026-05-08", end_time="202
 
 ## 测试
 
-项目测试位于 `tests/` 目录，分两类：
+项目测试位于各包 `tests/` 目录，分两类：
 
 ### 单元测试（默认运行，无需 API）
 
@@ -948,7 +948,7 @@ from kline_qlib import KLineToQlib
 | 概念板块 | 支持 | 支持 |
 | 批量查询 | 支持（多只股票一次请求） | 仅单只查询 |
 | 额度限制 | 周额度/月额度（500万条/周） | 未知（暂无限制） |
-| 复权方式 | 前复权/后复权可选 | 前复权（cqtype=1） |
+| 复权方式 | 前复权/后复权可选 | 后复权（cqtype=2，附 factor，详见 docs/guide/faq.md） |
 | 高频分页 | 不支持 | locator 自动翻页 |
 | 大范围日K | 支持 | 分段下载（每段 ≤1500 条） |
 | 安装方式 | 项目内模块 | pip install -e ./tzt-api -e ./kline-qlib |

@@ -358,27 +358,6 @@ kline:
   props: 0|1|2|3|4|191|190|519          # API 字段请求参数
   rights: 0
   route: 1
-kline_type_map:                          # 频率→API代码映射
-  day: '500'
-  1min: '501'
-  5min: '502'
-  15min: '565'
-  30min: '566'
-  60min: '567'
-  week: '561'
-  month: '562'
-market_map:                              # 市场→代码映射
-  sh: 1
-  sz: 0
-  bj: 103
-qlib_fields:                             # 写入 qlib 的字段列表
-  - open
-  - high
-  - low
-  - close
-  - volume
-  - factor
-  - vwap
 ```
 
 ## 环境变量

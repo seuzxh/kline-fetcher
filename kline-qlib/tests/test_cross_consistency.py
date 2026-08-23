@@ -13,6 +13,14 @@ SAMPLES = [
 ]
 
 
+def test_qlib_dir_matches_index_map():
+    """全部白名单指数：code_to_qlib_dir 与市场前缀一致（自 tzt-api 迁入，保持 tzt-api 零依赖）。"""
+    from tzt_api.market import INDEX_CODE_MAP
+    prefix = {1: "sh", 0: "sz", 103: "bj"}
+    for code, (_, market) in INDEX_CODE_MAP.items():
+        assert KLineToQlib.code_to_qlib_dir(code) == prefix[market] + code, f"{code} qlib 目录不符"
+
+
 @pytest.mark.parametrize("code", SAMPLES)
 def test_qlib_dir_matches_infer_market(code):
     """code_to_qlib_dir ≡ MARKET_TO_PREFIX[infer_market(code)] + numeric_code(code)。"""

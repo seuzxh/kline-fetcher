@@ -12,6 +12,9 @@ dependencies = [
     "kline-qlib>=1.0.0",
 ]
 
+[project.optional-dependencies]
+server = ["kline-qlib[server]"]
+
 [tool.setuptools.packages.find]
 include = ["kline_fetcher*"]
 

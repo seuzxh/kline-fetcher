@@ -57,12 +57,6 @@ class TestIndexMarketInference:
         for code, (_, market) in INDEX_CODE_MAP.items():
             assert KLineFetcher.infer_market(code) == market, f"{code} 市场推断不符"
 
-    def test_qlib_dir_matches_map(self):
-        """全部白名单指数：code_to_qlib_dir 与市场前缀一致。"""
-        from kline_qlib.converter import KLineToQlib
-        prefix = {1: "sh", 0: "sz", 103: "bj"}
-        for code, (_, market) in INDEX_CODE_MAP.items():
-            assert KLineToQlib.code_to_qlib_dir(code) == prefix[market] + code, f"{code} qlib 目录不符"
 
 
 class TestIndexOtherData:
