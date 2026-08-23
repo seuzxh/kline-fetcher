@@ -10,7 +10,7 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
-from kline_fetcher._base import INDEX_CODE_MAP, INDEX_CODE_PREFIXES
+from tzt_api.market import INDEX_CODE_MAP, INDEX_CODE_PREFIXES
 
 _DEFAULT_QLIB_DATA_DIR = os.environ.get(
     "QLIB_DATA_DIR",

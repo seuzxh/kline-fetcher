@@ -7,8 +7,8 @@
 """
 import pytest
 
-from kline_fetcher import TrendFetcher
-from kline_fetcher._base import PRICE_SCALE, TURNOVER_SCALE
+from tzt_api import TrendFetcher
+from tzt_api._base import PRICE_SCALE, TURNOVER_SCALE
 
 
 @pytest.fixture(scope="module")
@@ -290,7 +290,7 @@ class TestFetchHistoryTrendInvalidDate:
 
 class TestInheritance:
     def test_inherits_from_kline_fetcher(self):
-        from kline_fetcher._base import KLineFetcher
+        from tzt_api._base import KLineFetcher
         assert issubclass(TrendFetcher, KLineFetcher)
 
     def test_inherits_day_kline_method(self, fetcher):

@@ -8,7 +8,7 @@
 
 from typing import Dict, List, Optional
 
-from kline_fetcher._base import KLineFetcher, PRICE_SCALE, TURNOVER_SCALE
+from tzt_api._base import KLineFetcher, PRICE_SCALE, TURNOVER_SCALE
 
 __all__ = ["TrendFetcher"]
 

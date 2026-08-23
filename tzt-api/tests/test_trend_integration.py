@@ -20,7 +20,7 @@ pytestmark = [
     ),
 ]
 
-from kline_fetcher import TrendFetcher
+from tzt_api import TrendFetcher
 
 TEST_CODE = "600519"    # 贵州茅台
 TEST_MARKET = 1         # 上海

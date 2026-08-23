@@ -9,8 +9,8 @@
   - 日K线获取方法：fetch_day_kline / fetch_day_kline_with_factor /
     fetch_trade_calendar / get_stock_info
 
-分钟K线方法见 kline_fetcher.min_kline.MinKLineFetcher，
-概念板块方法见 kline_fetcher.concept_plate.ConceptPlateFetcher。
+分钟K线方法见 tzt_api.min_kline.MinKLineFetcher，
+概念板块方法见 tzt_api.concept_plate.ConceptPlateFetcher。
 """
 
 import logging
@@ -21,6 +21,16 @@ from typing import Dict, List, Optional
 
 import requests
 import yaml
+
+from tzt_api.market import (
+    INDEX_CODE_MAP,
+    INDEX_CODE_PREFIXES,
+    MARKET_CODE_MAP,
+    get_index_info,
+    infer_market,
+    is_index,
+    numeric_code,
+)
 
 __all__ = [
     "AdjustType",
@@ -72,12 +82,6 @@ def _resolve_adjust(adjust: Optional[str]) -> Optional[int]:
         raise ValueError(f"无效的复权参数: {adjust}，可选值: qfq(前复权), hfq(后复权), none(不复权)")
 
 
-MARKET_CODE_MAP = {
-    "sh": 1,
-    "sz": 0,
-    "bj": 103,
-}
-
 KLINE_TYPE_MAP = {
     "day": "500",
     "1min": "501",
@@ -100,44 +104,6 @@ KLINE_RESPONSE_KEY_MAP = {
     "562": "MonthKLine",
 }
 
-# 常见指数代码表：{代码: (名称, 市场代码)}（2026-08 实测可获取日K/分钟K/分时/历史分时）。
-#
-# ⚠️ 代码歧义：000xxx 指数代码与深市个股代码段重叠——裸码 "000001" 既是上证指数
-# （沪，market=1）也是平安银行（深，market=0）。本项目的市场推断规则是「指数优先」：
-# 白名单内的裸码按指数处理；取深市个股请用显式前缀（"sz000001"）或显式传 market=0。
-INDEX_CODE_MAP = {
-    "000001": ("上证指数", 1),
-    "000010": ("上证180", 1),
-    "000015": ("上证红利", 1),
-    "000016": ("上证50", 1),
-    "000300": ("沪深300", 1),
-    "000688": ("科创50", 1),
-    "000698": ("科创100", 1),
-    "000852": ("中证1000", 1),
-    "000903": ("中证100", 1),
-    "000905": ("中证500", 1),
-    "000906": ("中证800", 1),
-    "000922": ("中证红利", 1),
-    "399001": ("深证成指", 0),
-    "399004": ("深证100", 0),
-    "399005": ("中小板指", 0),
-    "399006": ("创业板指", 0),
-    "399102": ("创业板综", 0),
-    "399106": ("深证综指", 0),
-    "399107": ("深证A指", 0),
-    "399295": ("创业板50", 0),
-    "399303": ("国证2000", 0),
-    "399311": ("国证1000", 0),
-    "399971": ("中证传媒", 0),
-    "399997": ("中证白酒", 0),
-    "399998": ("中证煤炭", 0),
-    "899050": ("北证50", 103),
-}
-
-# 399 开头的代码均为深市指数（深证系列指数代码段），与个股无冲突
-INDEX_CODE_PREFIXES = ("399",)
-
-
 class KLineFetcher:
     """中焯行情 API 客户端基类。
 
@@ -159,80 +125,24 @@ class KLineFetcher:
 
     @staticmethod
     def _numeric_code(code: str) -> str:
-        """剥离 sh/sz/bj 显式前缀，返回纯数字代码。无前缀则原样返回。"""
-        upper = code.upper()
-        if upper[:2] in ("SH", "SZ", "BJ"):
-            return code[2:]
-        return code
+        """剥离 sh/sz/bj 显式前缀（委托 tzt_api.market.numeric_code）。"""
+        return numeric_code(code)
 
     @staticmethod
     def is_index(code: str) -> bool:
-        """判断 code 是否按指数处理（请求行情前的优先判断）。
-
-        规则（指数优先）：
-          - 显式 sz/bj 前缀 → 按个股，返回 False
-          - 白名单指数代码（INDEX_CODE_MAP）→ True
-          - 399 开头（深证系列指数）→ True
-          - 其余按个股，返回 False
-        """
-        upper = code.upper()
-        if upper[:2] in ("SZ", "BJ"):
-            return False
-        numeric = KLineFetcher._numeric_code(code)
-        return numeric in INDEX_CODE_MAP or numeric.startswith(INDEX_CODE_PREFIXES)
+        """是否按指数处理（指数优先规则见 tzt_api.market.is_index）。"""
+        return is_index(code)
 
     @staticmethod
     def get_index_info(code: str) -> Optional[tuple]:
-        """若 code 按指数处理，返回 (名称, 市场代码)；否则返回 None。
-
-        白名单外的 399 开头代码名称返回 None（市场仍为 0）。
-        """
-        if not KLineFetcher.is_index(code):
-            return None
-        numeric = KLineFetcher._numeric_code(code)
-        info = INDEX_CODE_MAP.get(numeric)
-        if info is not None:
-            return info
-        return (None, MARKET_CODE_MAP["sz"])  # 399 前缀的未知指数
+        """指数 (名称, 市场代码) 或 None（委托 tzt_api.market.get_index_info）。"""
+        return get_index_info(code)
 
     @staticmethod
     def infer_market(code: str) -> int:
-        """推断市场代码。请求行情前**优先判断指数，其次个股**。
-
-        判断顺序：
-          1. 显式前缀 sh/sz/bj → 直接按前缀市场（"sh000300" → 1）
-          2. 指数优先：白名单指数（INDEX_CODE_MAP）按其所属市场，
-             399 开头按深市指数（market=0）
-          3. 个股规则：600/601/603/605/688/689 → 沪；000/001/002/003/300/301 → 深；
-             8/4/920 → 北；其余默认深
-
-        ⚠️ 歧义提示：裸码 "000001" 按指数优先返回沪市（上证指数）。
-        取深市同名代码个股（如平安银行）请用 "sz000001" 或显式 market=0。
-        """
-        upper = code.upper()
-        if upper.startswith("SH"):
-            return MARKET_CODE_MAP["sh"]
-        if upper.startswith("SZ"):
-            return MARKET_CODE_MAP["sz"]
-        if upper.startswith("BJ"):
-            return MARKET_CODE_MAP["bj"]
-
-        numeric = KLineFetcher._numeric_code(code)
-        # 2) 指数优先判断（先于个股规则）
-        info = INDEX_CODE_MAP.get(numeric)
-        if info is not None:
-            return info[1]
-        if numeric.startswith(INDEX_CODE_PREFIXES):
-            return MARKET_CODE_MAP["sz"]
-
-        # 3) 个股规则
-        if numeric.startswith(("600", "601", "603", "605", "688", "689")):
-            return MARKET_CODE_MAP["sh"]
-        if numeric.startswith(("000", "001", "002", "003", "300", "301")):
-            return MARKET_CODE_MAP["sz"]
-        if numeric.startswith(("8", "4", "920")):
-            return MARKET_CODE_MAP["bj"]
-        return MARKET_CODE_MAP["sz"]
+        """推断市场代码（指数优先；⚠️ 裸码 000001 按上证指数→沪市。
+        规则全文见 tzt_api.market.infer_market）。"""
+        return infer_market(code)
 
     def _throttle(self):
         interval = self.config.get("api", {}).get("request_interval", 0.1)

@@ -8,7 +8,7 @@
 
 from typing import Dict, List, Optional
 
-from kline_fetcher._base import KLineFetcher, KLINE_TYPE_MAP, KLINE_RESPONSE_KEY_MAP
+from tzt_api._base import KLineFetcher, KLINE_TYPE_MAP, KLINE_RESPONSE_KEY_MAP
 
 __all__ = ["MinKLineFetcher"]
 

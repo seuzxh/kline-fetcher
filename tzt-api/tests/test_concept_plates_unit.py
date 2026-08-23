@@ -7,7 +7,7 @@
 """
 import pytest
 
-from kline_fetcher import ConceptPlateFetcher
+from tzt_api import ConceptPlateFetcher
 
 
 @pytest.fixture(scope="module")

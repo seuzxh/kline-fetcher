@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 import unittest
 import logging
 import pytest
-from kline_fetcher import ConceptPlateFetcher
+from tzt_api import ConceptPlateFetcher
 
 # 标记为集成测试：默认跳过，仅在设置 KLINE_API_BASE_URL 且显式 -m integration 时运行
 pytestmark = [

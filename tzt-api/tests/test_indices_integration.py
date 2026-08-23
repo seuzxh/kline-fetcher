@@ -17,8 +17,8 @@ pytestmark = [
     ),
 ]
 
-from kline_fetcher import KLineFetcher, MinKLineFetcher, TrendFetcher
-from kline_fetcher._base import INDEX_CODE_MAP
+from tzt_api import KLineFetcher, MinKLineFetcher, TrendFetcher
+from tzt_api.market import INDEX_CODE_MAP
 
 # 历史分时用最近已知的交易日（周五）；当前日期附近取一个肯定的历史交易日
 HISTORY_TREND_DATE = "20260821"
@@ -53,7 +53,7 @@ class TestIndexDayKline:
 class TestIndexMarketInference:
     def test_infer_market_matches_map(self):
         """全部白名单指数：infer_market 与 INDEX_CODE_MAP 声明的市场一致。"""
-        from kline_fetcher import KLineFetcher
+        from tzt_api import KLineFetcher
         for code, (_, market) in INDEX_CODE_MAP.items():
             assert KLineFetcher.infer_market(code) == market, f"{code} 市场推断不符"
 

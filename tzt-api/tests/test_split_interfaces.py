@@ -22,7 +22,7 @@ pytestmark = [
     ),
 ]
 
-from kline_fetcher import KLineFetcher, MinKLineFetcher, ConceptPlateFetcher
+from tzt_api import KLineFetcher, MinKLineFetcher, ConceptPlateFetcher
 
 TEST_CODE = "600519"    # 贵州茅台
 TEST_MARKET = 1         # 上海

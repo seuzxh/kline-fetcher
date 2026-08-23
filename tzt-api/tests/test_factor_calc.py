@@ -12,7 +12,7 @@ from unittest import mock
 
 import pytest
 
-from kline_fetcher import KLineFetcher
+from tzt_api import KLineFetcher
 
 
 def _bar(date, close, volume):

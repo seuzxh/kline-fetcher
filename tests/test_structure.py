@@ -33,17 +33,18 @@ class TestPackageStructure:
 
     def test_module_all_declarations(self):
         """各模块都有 __all__。"""
-        from kline_fetcher import _base, min_kline, concept_plate
+        from tzt_api import _base, min_kline, concept_plate, trend
         assert hasattr(_base, "__all__")
         assert hasattr(min_kline, "__all__")
         assert hasattr(concept_plate, "__all__")
+        assert hasattr(trend, "__all__")
 
     def test_backward_compat_shim(self):
         """旧导入路径 from kline_fetcher.fetcher import 仍可用。"""
         from kline_fetcher.fetcher import (
             KLineFetcher, MinKLineFetcher, ConceptPlateFetcher, AdjustType
         )
-        assert KLineFetcher.__module__ == "kline_fetcher._base"
+        assert KLineFetcher.__module__ == "tzt_api._base"
 
 
 class TestMethodAttribution:
