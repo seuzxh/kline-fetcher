@@ -44,6 +44,7 @@ nav:
       - 数据格式: guide/data-format.md
       - 使用示例: guide/usage.md
       - 测试与兼容: guide/testing.md
+      - tztapi-agent 接口智能体: guide/tztapi-agent.md
       - 常见问题: guide/faq.md
   - 深入了解:
       - 架构: architecture.md
