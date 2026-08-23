@@ -8,6 +8,8 @@ kline-fetcher 是一个 A 股 K 线数据获取与 Qlib 格式转换工具（v2.
 
 **需要了解接口信息（Action 功能号、入出参、属性 ID、字段单位、市场代码等）时，优先阅读 [docs/API/中焯官方文档/README.md](docs/API/中焯官方文档/README.md)** —— 该目录存放中焯行情 3.0 官方技术资料的解析版（6 份，可直接检索的 Markdown/文本）与原件（`originals/`），README 含「查什么 → 读哪份」导航和「文档 ↔ 项目代码」映射速查。
 
+**接口工作派发规则**：凡是基于中焯行情 API 的接口需求——新建行情接口、校验现有接口用法、参数/响应解析问题——**必须调用子智能体 `tztapi-agent`**（ZCode：Skill `tztapi-agent`，位于 `~/.zcode/skills/tztapi-agent/`；Claude Code：subagent `tztapi-agent`）。该智能体的工作准则：一切结论以官方文档为据（注明出处）、以真实 API 实测定论，未经实测不得答复「确认可用」。
+
 ## 架构
 
 ```
