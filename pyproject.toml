@@ -15,9 +15,11 @@ dependencies = [
 
 [project.optional-dependencies]
 qlib = ["pyqlib>=0.9"]
+server = ["fastapi>=0.100", "uvicorn>=0.23"]
 
 [project.scripts]
 kline-download = "kline_fetcher.download:main"
+kline-server = "kline_fetcher.server:main"
 
 [tool.setuptools.packages.find]
 include = ["kline_fetcher*"]
