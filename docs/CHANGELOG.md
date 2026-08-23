@@ -2,6 +2,17 @@
 
 本文件记录 kline-fetcher 的版本变更。格式遵循 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
+## [Unreleased]
+
+### ✨ 新功能
+
+- **kline-server 在线调试服务**（`server.py`）：FastAPI 薄包装，13 个只读 REST 端点（日K/分钟K/分时/概念板块/本地覆盖查询），`/docs` Swagger UI 浏览器在线测试。可选依赖 `pip install 'kline-fetcher[server]'`；NaN 序列化为 null，失败返回 502
+- **factor 脏数据校验测试**：补齐 hfq 四价非正 / factor<1 整条置 NaN 场景的单元测试（校验逻辑本体已随指数系列提交入库）
+
+### 📚 文档
+
+- 项目文档整理至 `docs/`：新增 `architecture.md`（架构）、`design.md`（技术方案）、`api-reference.md`（API 参考）；CHANGELOG / REVIEW_ISSUES / 概念板块抓包文档迁入 `docs/`；README 增加文档索引
+
 ## [3.0.1] - 2026-07-06
 
 ### 🐛 Bug 修复

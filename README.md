@@ -39,6 +39,17 @@ min_data = min_fetcher.fetch_min_kline("600519", freq="5min", count=10)
 - 支持概念板块数据获取（详见「概念板块相关方法」）
 - 支持分时数据获取（集合竞价 + 盘中分时，详见「分时数据相关方法」）
 
+## 文档索引
+
+| 文档 | 内容 |
+|------|------|
+| [docs/architecture.md](docs/architecture.md) | 架构文档：模块划分、类继承结构、数据流、存储布局 |
+| [docs/design.md](docs/design.md) | 技术方案：复权与 factor、bin 格式、增量追加、日历对齐等设计决策 |
+| [docs/api-reference.md](docs/api-reference.md) | API 参考：全部公开类/方法/参数/返回值 |
+| [docs/concept_plate_api.md](docs/concept_plate_api.md) | 概念板块接口深度文档（实测响应结构、分页、已知限制） |
+| [docs/CHANGELOG.md](docs/CHANGELOG.md) | 版本变更记录 |
+| [docs/REVIEW_ISSUES.md](docs/REVIEW_ISSUES.md) | code review 待办跟踪 |
+
 ## 目录结构
 
 ```
@@ -46,6 +57,14 @@ kline-fetcher/                    # 包项目根目录
 ├── pyproject.toml                # 包元数据和依赖声明
 ├── README.md                     # 本文档
 ├── AGENTS.md                     # 项目说明（给 AI 代理用）
+├── docs/                         # 项目文档目录
+│   ├── architecture.md           # 架构文档（模块划分、继承结构、数据流）
+│   ├── design.md                 # 技术方案（复权、bin 格式、增量追加、日历对齐）
+│   ├── api-reference.md          # 包 API 参考（类/方法/参数/返回值）
+│   ├── CHANGELOG.md              # 版本变更记录
+│   ├── REVIEW_ISSUES.md          # code review 待办跟踪
+│   └── API/
+│       └── 概念板块请求API.md      # 概念板块接口原始抓包记录
 ├── tests/                        # 测试文件目录
 │   ├── __init__.py               # 测试包文件
 │   ├── test_append_bin.py        # _append_bin 增量合并单元测试
@@ -739,6 +758,8 @@ uvicorn kline_fetcher.server:app      # 等效启动方式
 | 本地数据查询 | `/api/coverage`（本地 bin 覆盖检查，只读） |
 
 **行为约定**：参数与 Python API 一致（日期格式 `YYYYMMDD`、频率枚举、复权枚举均有表单校验）；请求失败返回 502 并附说明，原因见服务端日志；脏数据记录中的 NaN 序列化为 `null`。**只暴露读操作**，不提供 bin 写入端点，防止误写数据；服务无鉴权，默认只绑定 `127.0.0.1`，请勿暴露公网。
+
+完整端点参数说明见 [docs/api-reference.md](docs/api-reference.md) 的「server 在线调试服务」一节。
 
 ---
 
