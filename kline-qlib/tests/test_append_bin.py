@@ -1,7 +1,7 @@
 import os
 import tempfile
 import numpy as np
-from kline_fetcher.converter import KLineToQlib
+from kline_qlib.converter import KLineToQlib
 
 
 class TestAppendBin:

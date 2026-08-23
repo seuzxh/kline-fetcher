@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kline-qlib"
+version = "1.0.0"
+description = "K线行情 → qlib bin 数据管道（下载编排 + 格式转换 + 调试服务），行情来自 tzt-api"
+requires-python = ">=3.9"
+dependencies = [
+    "numpy>=1.24",
+    "tzt-api>=1.0.0",
+]
+
+[project.optional-dependencies]
+server = ["fastapi>=0.100", "uvicorn>=0.23"]
+
+[project.scripts]
+kline-download = "kline_qlib.download:main"
+kline-server = "kline_qlib.server:main"
+
+[tool.setuptools.packages.find]
+include = ["kline_qlib*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

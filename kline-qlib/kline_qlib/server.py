@@ -8,9 +8,9 @@
 启动：
     kline-server                        # http://127.0.0.1:8000/docs
     kline-server --port 9000
-    uvicorn kline_fetcher.server:app    # 等效
+    uvicorn kline_qlib.server:app       # 等效
 
-依赖：pip install 'kline-fetcher[server]'
+依赖：pip install 'kline-qlib[server]'
 环境：需设置 KLINE_API_BASE_URL（数据获取类端点才需要）
 
 注意：本服务无鉴权（中焯 API 本身无 Token），默认只绑定 127.0.0.1，
@@ -27,17 +27,16 @@ try:
 except ImportError as e:  # pragma: no cover
     raise ImportError(
         "server 功能需要 fastapi/uvicorn，请安装可选依赖："
-        "pip install 'kline-fetcher[server]'"
+        "pip install 'kline-qlib[server]'"
     ) from e
 
-from kline_fetcher import (
-    __version__,
+from tzt_api import (
     ConceptPlateFetcher,
     KLineFetcher,
-    KLineToQlib,
     MinKLineFetcher,
     TrendFetcher,
 )
+from kline_qlib import KLineToQlib, __version__
 
 app = FastAPI(
     title="kline-fetcher 在线调试服务",
@@ -279,9 +278,9 @@ def main():
     try:
         import uvicorn
     except ImportError:  # pragma: no cover
-        raise SystemExit("缺少 uvicorn，请安装：pip install 'kline-fetcher[server]'")
+        raise SystemExit("缺少 uvicorn，请安装：pip install 'kline-qlib[server]'")
 
-    uvicorn.run("kline_fetcher.server:app", host=args.host, port=args.port, reload=args.reload)
+    uvicorn.run("kline_qlib.server:app", host=args.host, port=args.port, reload=args.reload)
 
 
 if __name__ == "__main__":

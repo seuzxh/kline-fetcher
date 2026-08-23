@@ -9,7 +9,7 @@
 """
 import pytest
 
-from kline_fetcher.converter import KLineToQlib
+from kline_qlib.converter import KLineToQlib
 
 DATE = "2026-06-12"
 

@@ -11,7 +11,7 @@ pytest.importorskip("httpx")
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from kline_fetcher import server  # noqa: E402
+from kline_qlib import server  # noqa: E402
 
 DAY_KLINE_MOCK = [
     {"date": "2026-08-21", "open": 1.0, "high": 2.0, "low": 0.5,

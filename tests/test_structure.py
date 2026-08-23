@@ -84,14 +84,14 @@ class TestDownloadLayer:
 
     def test_day_download_uses_KLineFetcher(self):
         """download_day_kline 用 KLineFetcher + fetch_day_kline_with_factor。"""
-        from kline_fetcher import download as dl
+        from kline_qlib import download as dl
         src = inspect.getsource(dl.download_day_kline)
         assert "KLineFetcher()" in src
         assert "fetch_day_kline_with_factor" in src
 
     def test_min_download_uses_MinKLineFetcher(self):
         """download_min_kline 用 MinKLineFetcher + fetch_min_kline。"""
-        from kline_fetcher import download as dl
+        from kline_qlib import download as dl
         src = inspect.getsource(dl.download_min_kline)
         assert "MinKLineFetcher()" in src
         assert "fetch_min_kline" in src
@@ -106,7 +106,7 @@ class TestConverterStatics:
     """验证 KLineToQlib 静态方法与常量。"""
 
     def test_code_to_qlib_dir(self):
-        from kline_fetcher.converter import KLineToQlib
+        from kline_qlib.converter import KLineToQlib
         assert KLineToQlib.code_to_qlib_dir("600519") == "sh600519"
         assert KLineToQlib.code_to_qlib_dir("SH600519") == "sh600519"
         # 指数优先：裸码 000001 按上证指数 → sh；显式前缀 → 按前缀
@@ -116,7 +116,7 @@ class TestConverterStatics:
 
     def test_code_to_qlib_dir_indices(self):
         """指数优先：白名单指数按其所属市场命名目录。"""
-        from kline_fetcher.converter import KLineToQlib
+        from kline_qlib.converter import KLineToQlib
         assert KLineToQlib.code_to_qlib_dir("000300") == "sh000300"
         assert KLineToQlib.code_to_qlib_dir("sh000300") == "sh000300"
         assert KLineToQlib.code_to_qlib_dir("000852") == "sh000852"
@@ -128,7 +128,7 @@ class TestConverterStatics:
         assert KLineToQlib.code_to_qlib_dir("000002") == "sz000002"
 
     def test_fields_constants(self):
-        from kline_fetcher.converter import QLIB_DAY_FIELDS, QLIB_MIN_FIELDS
+        from kline_qlib.converter import QLIB_DAY_FIELDS, QLIB_MIN_FIELDS
         expected = ["open", "high", "low", "close", "volume", "factor", "vwap"]
         assert QLIB_DAY_FIELDS == expected
         assert QLIB_MIN_FIELDS == expected
@@ -181,3 +181,20 @@ class TestIndexDetection:
         assert KLineFetcher.infer_market("300750") == 0
         assert KLineFetcher.infer_market("sz000001") == 0  # 显式前缀 → 平安银行
         assert KLineFetcher.infer_market("830799") == 103
+
+
+class TestCompatShims:
+    """拆分过渡期：旧路径与实现包指向同一对象。"""
+
+    def test_root_shims_same_objects(self):
+        import kline_fetcher.converter as c_shim
+        import kline_fetcher.download as d_shim
+        from kline_qlib.converter import KLineToQlib as real_c
+        from kline_qlib.download import download_day_kline as real_d
+        assert c_shim.KLineToQlib is real_c
+        assert d_shim.download_day_kline is real_d
+
+    def test_fetcher_shim_includes_trend(self):
+        from kline_fetcher.fetcher import TrendFetcher
+        from tzt_api import TrendFetcher as real
+        assert TrendFetcher is real

@@ -11,7 +11,7 @@ import tempfile
 
 import numpy as np
 
-from kline_fetcher.converter import KLineToQlib
+from kline_qlib.converter import KLineToQlib
 
 
 def _make_converter(freq="5min"):

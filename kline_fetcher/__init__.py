@@ -10,7 +10,7 @@ from tzt_api import (
     MinKLineFetcher,
     TrendFetcher,
 )
-from kline_fetcher.converter import KLineToQlib
+from kline_qlib import KLineToQlib
 
 __all__ = [
     "KLineFetcher",
