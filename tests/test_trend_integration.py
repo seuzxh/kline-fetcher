@@ -200,6 +200,9 @@ class TestInheritance:
         assert data is not None and len(data) > 0
 
     def test_inherited_infer_market(self):
-        """TrendFetcher 继承 infer_market 静态方法。"""
+        """TrendFetcher 继承 infer_market 静态方法（含指数优先规则）。"""
         assert TrendFetcher.infer_market("600519") == 1
-        assert TrendFetcher.infer_market("000001") == 0
+        # 裸码 000001 按指数优先规则推断为上证指数（market=1）；
+        # 取深市平安银行需用 "sz000001" 或显式 market=0（见 AGENTS.md「指数行情使用注意」）
+        assert TrendFetcher.infer_market("000001") == 1
+        assert TrendFetcher.infer_market("sz000001") == 0

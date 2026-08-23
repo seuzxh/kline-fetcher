@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kline-fetcher"
-version = "3.0.0"
+version = "3.0.1"
 description = "A股K线数据获取与qlib格式转换工具"
 requires-python = ">=3.9"
 dependencies = [

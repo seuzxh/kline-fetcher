@@ -2,7 +2,7 @@
 
 ## 项目概述
 
-kline-fetcher 是一个 A 股 K 线数据获取与 Qlib 格式转换工具（v2.1.0）。它从中焯行情 API 获取股票行情数据，转换为 Qlib 标准的 `.bin` 格式，供量化回测框架使用。
+kline-fetcher 是一个 A 股 K 线数据获取与 Qlib 格式转换工具（v3.0.1）。它从中焯行情 API 获取股票行情数据，转换为 Qlib 标准的 `.bin` 格式，供量化回测框架使用。
 
 ## 中焯官方接口文档（智能体必读）
 
@@ -383,27 +383,9 @@ qlib_fields:                             # 写入 qlib 的字段列表
 
 ## 版本变更记录
 
-### v2.1.1（新增分时数据功能，向后兼容）
+完整变更历史见 [docs/CHANGELOG.md](docs/CHANGELOG.md)（单一事实来源，Keep a Changelog 格式）。
 
-1. **新增分时数据模块**：新增 `trend.py`，引入 `TrendFetcher` 类，支持：
-   - `fetch_intraday_trend()`：获取当日分时数据（集合竞价+盘中）
-   - `fetch_history_trend(code, date)`：获取历史分时数据
-   - `fetch_trend(code, date)`：自动判断当日/历史
-2. **分时数据结构**：返回 `{"market_date", "pre_market", "trading"}`，包含集合竞价（09:15-09:25）和盘中（09:30-15:00）数据
-3. **API 参数**：`Action=10001`, `trendtypes=-1`（盘前/盘中/盘后整体分时）
-4. **当日/历史区分**：`date=0, daycount=0` 为当日分时；`date=YYYYMMDD, daycount=1` 为历史分时
+关键破坏性变更速记：
 
-### v2.1.0（架构变更，向后兼容）
-
-1. **分钟K线从日K剥离**：原 `fetcher.py`（792 行单文件）拆分为 `_base.py` / `min_kline.py` / `concept_plate.py`，引入 `MinKLineFetcher` 和 `ConceptPlateFetcher` 两个子类
-2. `fetcher.py` 改为兼容垫片，旧导入路径 `from kline_fetcher.fetcher import KLineFetcher` 仍可用
-3. **唯一破坏**：`KLineFetcher().get_all_concept_plates()` 等概念板块方法需改用 `ConceptPlateFetcher`；`fetch_min_kline` 需改用 `MinKLineFetcher`
-4. 删除失效的 `fetch_kline` 方法（返回数据自带时间字段，客户端可自行切片）
-5. 数据单位换算经实测确认（价格÷1e6、成交额÷1e4、成交量已是股），见 `_base.py` 注释
-
-### v2.0.0（不兼容变更）
-
-1. 默认复权方式从前复权(cqtype=1)改为后复权(cqtype=2)
-2. 新增 `factor` 字段，移除 `amount` 字段
-3. `volume` 改为后复权成交量（`不复权成交量 / factor`）
-4. 已有数据需全量替换
+- **v3.0.0**：架构拆分——单文件 `fetcher.py` 拆分为 `_base/min_kline/concept_plate` 继承体系，概念板块/分钟K方法移入子类（旧导入路径保留兼容垫片）
+- **v2.0.0**：默认后复权存储 + `factor` 字段（还原原始价：`后复权价/factor`），已有数据需全量替换
