@@ -12,7 +12,7 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
-from tzt_api.market import INDEX_CODE_MAP, INDEX_CODE_PREFIXES
+from tzt_api.market import MARKET_TO_PREFIX, infer_market, numeric_code
 
 _DEFAULT_QLIB_DATA_DIR = os.environ.get(
     "QLIB_DATA_DIR",
@@ -188,30 +188,13 @@ class KLineToQlib:
 
     @staticmethod
     def code_to_qlib_dir(code: str) -> str:
-        upper = code.upper()
-        if upper.startswith("SH"):
-            return f"sh{code[2:]}"
-        if upper.startswith("SZ"):
-            return f"sz{code[2:]}"
-        if upper.startswith("BJ"):
-            return f"bj{code[2:]}"
-        numeric = code
-        # 指数优先（与 KLineFetcher.infer_market 保持一致）：
-        # 白名单指数按其所属市场，399 开头按深市指数
-        info = INDEX_CODE_MAP.get(numeric)
-        if info is not None:
-            prefix = {1: "sh", 0: "sz", 103: "bj"}[info[1]]
-            return prefix + numeric
-        if numeric.startswith(INDEX_CODE_PREFIXES):
-            return f"sz{numeric}"
-        # 个股规则
-        if numeric.startswith(("600", "601", "603", "605", "688", "689")):
-            return f"sh{code}"
-        if numeric.startswith(("000", "001", "002", "003", "300", "301")):
-            return f"sz{code}"
-        if numeric.startswith(("8", "4", "920")):
-            return f"bj{code}"
-        return f"sz{code}"
+        """股票/指数代码 → qlib 目录名（如 "sh600519"）。
+
+        统一委托市场推断单一事实源（tzt_api.market）：目录前缀 =
+        MARKET_TO_PREFIX[infer_market(code)]，尾码 = numeric_code(code)。
+        指数优先规则见 tzt_api.market.infer_market。
+        """
+        return MARKET_TO_PREFIX[infer_market(code)] + numeric_code(code)
 
     def day_kline_to_qlib(self, code: str, kline_data: List[Dict], mode: str = "append", qlib_dir: Optional[str] = None) -> bool:
         if not kline_data:

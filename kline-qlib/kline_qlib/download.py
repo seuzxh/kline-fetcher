@@ -13,7 +13,8 @@ import time
 from typing import Optional
 
 from tzt_api import KLineFetcher, MinKLineFetcher
-from kline_qlib.converter import KLineToQlib
+from tzt_api.market import MARKET_CODE_MAP
+from kline_qlib.converter import KLineToQlib, _DEFAULT_QLIB_DATA_DIR
 
 POOL_MAP = {
     "all": "all.txt",
@@ -28,20 +29,13 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
 )
-logger = logging.getLogger("kline_fetcher.download")
-
-
-PREFIX_TO_MARKET = {
-    "sh": 1,
-    "sz": 0,
-    "bj": 103,
-}
+logger = logging.getLogger("kline_qlib.download")
 
 
 def load_stock_pool(pool_name: str, instruments_dir: Optional[str] = None) -> list:
     if instruments_dir is None:
-        converter = KLineToQlib()
-        instruments_dir = converter.instruments_dir
+        qlib_data_dir = os.environ.get("QLIB_DATA_DIR", _DEFAULT_QLIB_DATA_DIR)
+        instruments_dir = os.path.join(qlib_data_dir, "instruments")
 
     filename = POOL_MAP.get(pool_name, pool_name if pool_name.endswith(".txt") else f"{pool_name}.txt")
     filepath = os.path.join(instruments_dir, filename)
@@ -60,13 +54,18 @@ def load_stock_pool(pool_name: str, instruments_dir: Optional[str] = None) -> li
             inst_code = parts[0]
             prefix = inst_code[:2].lower()
             code_num = inst_code[2:]
-            market = PREFIX_TO_MARKET.get(prefix)
+            market = MARKET_CODE_MAP.get(prefix)
             if market is not None:
                 stocks.append((code_num, market, inst_code.lower()))
     return stocks
 
 
 def download_day_kline(start: str, end: str, pool: str, incremental: bool = True, qlib_data_dir: Optional[str] = None, adjust: Optional[str] = None):
+    """按股池下载日K并写入 qlib bin。
+
+    注意：日K固定以 hfq+none 双请求计算 factor（fetch_day_kline_with_factor），
+    adjust 参数仅为 CLI 兼容保留，此函数内忽略。
+    """
     fetcher = KLineFetcher()
     converter = KLineToQlib(qlib_data_dir=qlib_data_dir)
 
