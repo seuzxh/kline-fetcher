@@ -19,3 +19,6 @@ venv/
 # mkdocs 构建产物（CI 中生成，不入库）
 site/
 docs/index.md
+
+# CodeGraph 本地索引（不入库）
+.codegraph/
