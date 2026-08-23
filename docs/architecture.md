@@ -169,7 +169,7 @@ API 地址不进配置文件（避免敏感地址提交入库），只走环境�
 
 | 文档 | 内容 |
 |------|------|
-| [README.md](../README.md) | 使用教程、完整示例、常见问题 |
+| [README.md(index.md) | 使用教程、完整示例、常见问题 |
 | [api-reference.md](api-reference.md) | 全部公开类/方法/参数/返回值参考 |
 | [concept_plate_api.md](concept_plate_api.md) | 概念板块接口深度文档（实测） |
 | [design.md](design.md) | 复权方案、bin 格式、增量追加、日历对齐等设计决策 |

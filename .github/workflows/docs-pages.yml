@@ -44,9 +44,6 @@ jobs:
 
       - name: 准备 index 并修正相对链接
         run: |
-          # README 转为站点首页（位于 docs/ 下，相对链接需去掉 docs/ 前缀）
-          cp README.md docs/index.md
-          sed -i 's|](docs/|]|g' docs/index.md
           # docs 内部指向仓库根 README 的链接改为指向站点首页
           sed -i 's|](../README.md)|(index.md)|g' docs/*.md
 

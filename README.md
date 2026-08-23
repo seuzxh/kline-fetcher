@@ -1,5 +1,7 @@
 # kline-fetcher — A股K线数据获取与qlib格式转换工具
 
+> 📖 在线文档：https://seuzxh.github.io/kline-fetcher/
+
 ## 模块概述
 
 `kline-fetcher` 是一个独立的 Python 包，基于中焯行情 API 获取 A 股 K 线数据，并转换为 qlib bin 格式存储。无需 Token 认证，支持 `pip install` 安装。

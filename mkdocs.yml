@@ -1,5 +1,5 @@
 # MkDocs 配置：文档站点（GitHub Pages 部署，见 .github/workflows/docs-pages.yml）
-# 本地预览：mkdocs serve（先执行 workflow 中相同的"准备 index"步骤）
+# 本地预览：mkdocs serve
 site_name: kline-fetcher
 site_description: A股K线数据获取与 qlib 格式转换工具
 site_url: https://seuzxh.github.io/kline-fetcher/
@@ -17,9 +17,11 @@ theme:
       primary: indigo
       toggle: {icon: material/brightness-4, name: 切换浅色模式}
   features:
-    - navigation.tabs
-    - navigation.top
-    - content.code.copy
+    - navigation.top        # 返回顶部按钮
+    - navigation.tracking   # 地址栏跟随锚点
+    - navigation.sections   # 顶层导航分组显示
+    - navigation.expand     # 左侧目录默认展开
+    - content.code.copy     # 代码一键复制
 
 markdown_extensions:
   - admonition
@@ -35,10 +37,19 @@ markdown_extensions:
 
 nav:
   - 首页: index.md
-  - 架构: architecture.md
-  - 技术方案: design.md
+  - 使用指南:
+      - 配置: guide/configuration.md
+      - 批量下载: guide/download.md
+      - 在线调试服务: guide/server.md
+      - 数据格式: guide/data-format.md
+      - 使用示例: guide/usage.md
+      - 测试与兼容: guide/testing.md
+      - 常见问题: guide/faq.md
+  - 深入了解:
+      - 架构: architecture.md
+      - 技术方案: design.md
   - API 参考: api-reference.md
   - 概念板块接口: concept_plate_api.md
-  - 原始抓包记录: API/概念板块请求API.md
-  - 更新日志: CHANGELOG.md
-  - Review 待办: REVIEW_ISSUES.md
+  - 附录:
+      - 原始抓包记录: API/概念板块请求API.md
+      - 更新日志: CHANGELOG.md
