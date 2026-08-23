@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kline-fetcher"
+version = "3.1.0"
+description = "（deprecated 兼容壳）原统一包的过渡导入层：re-export tzt-api + kline-qlib"
+requires-python = ">=3.9"
+dependencies = [
+    "tzt-api>=1.0.0",
+    "kline-qlib>=1.0.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["kline_fetcher*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
