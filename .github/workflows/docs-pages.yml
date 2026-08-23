@@ -34,6 +34,8 @@ jobs:
 
       # 首次运行自动启用 Pages（Build and deployment → Source: GitHub Actions）
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - name: 安装构建依赖
         run: pip install mkdocs-material
