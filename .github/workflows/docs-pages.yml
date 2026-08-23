@@ -1,0 +1,64 @@
+# 文档站点部署到 GitHub Pages
+# 构建流程：README.md → docs/index.md（并修正相对链接）→ mkdocs build → deploy-pages
+# 前提：仓库 Settings → Pages → Source 选择 "GitHub Actions"（仅需配置一次）
+name: Deploy docs to GitHub Pages
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'docs/**'
+      - 'README.md'
+      - 'mkdocs.yml'
+      - '.github/workflows/docs-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # 首次运行自动启用 Pages（Build and deployment → Source: GitHub Actions）
+      - uses: actions/configure-pages@v5
+
+      - name: 安装构建依赖
+        run: pip install mkdocs-material
+
+      - name: 准备 index 并修正相对链接
+        run: |
+          # README 转为站点首页（位于 docs/ 下，相对链接需去掉 docs/ 前缀）
+          cp README.md docs/index.md
+          sed -i 's|](docs/|]|g' docs/index.md
+          # docs 内部指向仓库根 README 的链接改为指向站点首页
+          sed -i 's|](../README.md)|(index.md)|g' docs/*.md
+
+      - name: 构建（strict：坏链接直接失败）
+        run: mkdocs build --strict
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

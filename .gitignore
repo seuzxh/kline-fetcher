@@ -16,3 +16,6 @@ venv/
 *.log
 .trae/
 .claude/
+# mkdocs 构建产物（CI 中生成，不入库）
+site/
+docs/index.md

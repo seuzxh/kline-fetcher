@@ -1,0 +1,44 @@
+# MkDocs 配置：文档站点（GitHub Pages 部署，见 .github/workflows/docs-pages.yml）
+# 本地预览：mkdocs serve（先执行 workflow 中相同的"准备 index"步骤）
+site_name: kline-fetcher
+site_description: A股K线数据获取与 qlib 格式转换工具
+site_url: https://seuzxh.github.io/kline-fetcher/
+repo_url: https://github.com/seuzxh/kline-fetcher
+repo_name: seuzxh/kline-fetcher
+
+theme:
+  name: material
+  language: zh
+  palette:
+    - scheme: default
+      primary: indigo
+      toggle: {icon: material/brightness-7, name: 切换深色模式}
+    - scheme: slate
+      primary: indigo
+      toggle: {icon: material/brightness-4, name: 切换浅色模式}
+  features:
+    - navigation.tabs
+    - navigation.top
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight
+  - tables
+  - toc:
+      permalink: true
+      # unicode slug（小写+保留中文）：与 GitHub 锚点风格一致，
+      # 文档内目录链接（如 #adjusttype-复权枚举）在站点和 GitHub 上都有效
+      slugify: !!python/name:pymdownx.slugs.uslugify
+
+nav:
+  - 首页: index.md
+  - 架构: architecture.md
+  - 技术方案: design.md
+  - API 参考: api-reference.md
+  - 概念板块接口: concept_plate_api.md
+  - 原始抓包记录: API/概念板块请求API.md
+  - 更新日志: CHANGELOG.md
+  - Review 待办: REVIEW_ISSUES.md
