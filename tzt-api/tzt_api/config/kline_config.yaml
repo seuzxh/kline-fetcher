@@ -14,24 +14,3 @@ kline:
   props: 0|1|2|3|4|191|190|519
   rights: 0
   route: 1
-kline_type_map:
-  15min: '565'
-  1min: '501'
-  30min: '566'
-  5min: '502'
-  60min: '567'
-  day: '500'
-  month: '562'
-  week: '561'
-market_map:
-  bj: 103
-  sh: 1
-  sz: 0
-qlib_fields:
-- open
-- high
-- low
-- close
-- volume
-- factor
-- vwap
