@@ -4,6 +4,10 @@
 
 kline-fetcher 是一个 A 股 K 线数据获取与 Qlib 格式转换工具（v2.1.0）。它从中焯行情 API 获取股票行情数据，转换为 Qlib 标准的 `.bin` 格式，供量化回测框架使用。
 
+## 中焯官方接口文档（智能体必读）
+
+**需要了解接口信息（Action 功能号、入出参、属性 ID、字段单位、市场代码等）时，优先阅读 [docs/API/中焯官方文档/README.md](docs/API/中焯官方文档/README.md)** —— 该目录存放中焯行情 3.0 官方技术资料的解析版（6 份，可直接检索的 Markdown/文本）与原件（`originals/`），README 含「查什么 → 读哪份」导航和「文档 ↔ 项目代码」映射速查。
+
 ## 架构
 
 ```
@@ -116,13 +120,13 @@ fetcher.fetch_day_kline("sh000300")                  # ✅ 沪深300（前缀，
 | `get_all_concept_plates()` | 获取概念板块列表 | `List[Dict]` 或 `None` |
 | `get_concept_plate_kline(plate_code, count, market)` | 获取板块K线 | `List[Dict]` 或 `None` |
 | `get_concept_plate_stocks(plate_code, start, count)` | 获取板块成份股 | `List[Dict]` 或 `None` |
-| `get_stock_concept_plates(code, market)` | 获取股票所属板块 | `List[Dict]`（**实测恒为空**，见下） |
+| `get_stock_concept_plates(code, market, plate_type)` | 获取股票所属板块 | `List[Dict]`，每项含 `type`（industry/region/concept） |
 
 **⚠️ 使用注意（2026-08 实测）**：
 - 概念板块市场代码固定 `market=44`，板块代码 `99xxxx`
 - `get_all_concept_plates()` **只返回按涨幅排序的前 30 个**（总数 `max=390`，单次 count 上限 100，取全量需按 `start` 翻页，示例见接口文档 1.4）
-- `get_concept_plate_stocks()` 返回**首项是板块自身**（`block.include=1` 所致），成份股需过滤 `market != 44`；响应 `max` 字段为成份股总数
-- `get_stock_concept_plates()` **实测不可用**：响应无板块字段，恒返回 `[]`；需要股票→板块映射请用「板块列表 + 成份股」反向构建
+- `get_concept_plate_stocks()` 返回**首项是板块自身**（`block.include=1` 所致，官方文档确认「包含板块指数则放行情列表首位」），成份股需过滤 `market != 44`；响应 `max` 字段为成份股总数
+- `get_stock_concept_plates()` 旧实现（抓包复刻的 10000 请求）实测不可用；**已修复**：改用官方关联属性 `900|901|923`（CoIndBlkIdx=行业 / CoBlkIdx=全部隶属板块 / RegionBlkIdx=地域，出自《行情3.0股票属性ID》），一次请求返回全部板块并按 900/923 交叉标注 `type`；`plate_type="concept"/"industry"/"region"` 可过滤，默认返回全部。`market` 现为可选（自动推断，注意 000xxx 裸码指数优先歧义）
 
 ### TrendFetcher (trend.py) — 分时数据
 

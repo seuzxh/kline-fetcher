@@ -52,4 +52,5 @@ nav:
   - 概念板块接口: concept_plate_api.md
   - 附录:
       - 原始抓包记录: API/概念板块请求API.md
+      - 中焯官方接口文档: API/中焯官方文档/README.md
       - 更新日志: CHANGELOG.md
