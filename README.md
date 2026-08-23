@@ -892,7 +892,9 @@ df = D.features(["SH600519"], ["$close"], start_time="2026-05-08", end_time="202
 ### 单元测试（默认运行，无需 API）
 
 ```bash
-pytest                      # 默认运行，跳过集成测试
+cd tzt-api && pytest               # 行情请求包测试
+cd kline-qlib && pytest            # qlib 写入包测试
+cd compat-kline-fetcher && pytest  # 兼容壳转发测试
 ```
 
 - `test_append_bin.py`：`_append_bin` 增量合并逻辑（9 个场景，含 NaN 保护）
@@ -906,7 +908,7 @@ pytest                      # 默认运行，跳过集成测试
 ```bash
 # 需先配置 API 地址
 export KLINE_API_BASE_URL=http://<your-api-host>:<port>
-pytest -m integration       # 显式启用集成测试
+cd tzt-api && pytest -m integration       # 显式启用集成测试（行情类）
 ```
 
 - `test_split_interfaces.py`：三类（KLineFetcher/MinKLineFetcher/ConceptPlateFetcher）端到端验证（34 项，覆盖各复权方式、5 种频率、错误输入、字段完整性、继承关系等）

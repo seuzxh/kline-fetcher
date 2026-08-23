@@ -35,7 +35,7 @@
 - Consumes: 无（第一块基石）。
 - Produces（后续任务依赖）：`tzt_api` 包——`__init__` 导出 `KLineFetcher, MinKLineFetcher, ConceptPlateFetcher, TrendFetcher, AdjustType`，`__version__ == "1.0.0"`；`tzt_api.market` 导出 `MARKET_CODE_MAP, MARKET_TO_PREFIX, INDEX_CODE_MAP, INDEX_CODE_PREFIXES, numeric_code(code)->str, is_index(code)->bool, get_index_info(code)->Optional[tuple], infer_market(code)->int`；`tzt_api._base` 可再导出 `ADJUST_MAP/PRICE_SCALE/TURNOVER_SCALE/MARKET_CODE_MAP/KLINE_TYPE_MAP/KLINE_RESPONSE_KEY_MAP`（供旧 fetcher 垫片路径）。
 
-- [ ] **Step 1: 创建分支与目录，git mv 模块**
+- [x] **Step 1: 创建分支与目录，git mv 模块**
 
 ```bash
 cd /home/zxh/quant_projects/kline-fetcher
@@ -51,7 +51,7 @@ git mv kline_fetcher/config/kline_config.yaml tzt-api/tzt_api/config/kline_confi
 
 （若 `kline_fetcher/config` 因此空目录则 `rmdir`；mv 前先 `mkdir -p tzt-api/tzt_api/config`。）
 
-- [ ] **Step 2: 写失败测试 `tzt-api/tests/test_market.py`**
+- [x] **Step 2: 写失败测试 `tzt-api/tests/test_market.py`**
 
 ```python
 #!/usr/bin/env python3
@@ -145,12 +145,12 @@ class TestFetcherDelegation:
             assert KLineFetcher.is_index(c) == is_index(c), c
 ```
 
-- [ ] **Step 3: 运行确认失败**
+- [x] **Step 3: 运行确认失败**
 
 Run: `cd tzt-api && conda run -n qlib python -m pytest tests/test_market.py -q`
 Expected: FAIL，`ModuleNotFoundError: No module named 'tzt_api'`
 
-- [ ] **Step 4: 写 `tzt-api/pyproject.toml`**
+- [x] **Step 4: 写 `tzt-api/pyproject.toml`**
 
 ```toml
 [build-system]
@@ -181,7 +181,7 @@ markers = [
 addopts = "-m 'not integration'"
 ```
 
-- [ ] **Step 5: 写 `tzt-api/tzt_api/market.py`**（常量与函数**原样搬移**自原 `_base.py:75-235`，docstring 保留）
+- [x] **Step 5: 写 `tzt-api/tzt_api/market.py`**（常量与函数**原样搬移**自原 `_base.py:75-235`，docstring 保留）
 
 ```python
 #!/usr/bin/env python3
@@ -333,7 +333,7 @@ def infer_market(code: str) -> int:
     return MARKET_CODE_MAP["sz"]
 ```
 
-- [ ] **Step 6: 写 `tzt-api/tzt_api/__init__.py`**
+- [x] **Step 6: 写 `tzt-api/tzt_api/__init__.py`**
 
 ```python
 """tzt-api：中焯行情 3.0 API 客户端（A股日K/分钟K/概念板块/分时）。
@@ -363,7 +363,7 @@ __all__ = [
 __version__ = "1.0.0"
 ```
 
-- [ ] **Step 7: 修改 `tzt-api/tzt_api/_base.py`**
+- [x] **Step 7: 修改 `tzt-api/tzt_api/_base.py`**
 
 7a. 删除 `MARKET_CODE_MAP`、`INDEX_CODE_MAP`、`INDEX_CODE_PREFIXES` 的定义（约 L75-79、L103-138），import 区加：
 
@@ -406,13 +406,13 @@ from tzt_api.market import (
         return infer_market(code)
 ```
 
-- [ ] **Step 8: 三个子模块 import 各改 1 行**
+- [x] **Step 8: 三个子模块 import 各改 1 行**
 
 - `tzt-api/tzt_api/min_kline.py`：`from kline_fetcher._base import KLineFetcher, KLINE_TYPE_MAP, KLINE_RESPONSE_KEY_MAP` → `from tzt_api._base import KLineFetcher, KLINE_TYPE_MAP, KLINE_RESPONSE_KEY_MAP`
 - `tzt-api/tzt_api/concept_plate.py`：`from kline_fetcher._base import KLineFetcher, KLINE_RESPONSE_KEY_MAP` → `from tzt_api._base import KLineFetcher, KLINE_RESPONSE_KEY_MAP`
 - `tzt-api/tzt_api/trend.py`：`from kline_fetcher._base import KLineFetcher, PRICE_SCALE, TURNOVER_SCALE` → `from tzt_api._base import KLineFetcher, PRICE_SCALE, TURNOVER_SCALE`
 
-- [ ] **Step 9: 根包垫片化**
+- [x] **Step 9: 根包垫片化**
 
 9a. 根 `kline_fetcher/__init__.py` 整体替换为：
 
@@ -488,7 +488,7 @@ __all__ = [
 
 9c. 根 `kline_fetcher/converter.py` L13：`from kline_fetcher._base import INDEX_CODE_MAP, INDEX_CODE_PREFIXES` → `from tzt_api.market import INDEX_CODE_MAP, INDEX_CODE_PREFIXES`（converter/download/server 本任务仍留在根包，Task 2 迁走）。
 
-- [ ] **Step 10: 行情侧测试迁入 `tzt-api/tests/` 并改导入**
+- [x] **Step 10: 行情侧测试迁入 `tzt-api/tests/` 并改导入**
 
 ```bash
 git mv tests/test_trend_unit.py tests/test_concept_plates_unit.py tests/test_factor_calc.py tzt-api/tests/
@@ -501,7 +501,7 @@ git mv tests/test_indices_integration.py tests/test_trend_integration.py tests/t
 - `from kline_fetcher._base import INDEX_CODE_MAP`（test_indices_integration.py:21）→ `from tzt_api.market import INDEX_CODE_MAP`
 - 其余 `from kline_fetcher import X` / `import kline_fetcher` → `from tzt_api import X` / `import tzt_api`（如 prepare 侧脚本同款用法）
 
-- [ ] **Step 11: 新建 `tzt-api/tests/test_structure_api.py`**
+- [x] **Step 11: 新建 `tzt-api/tests/test_structure_api.py`**
 
 ```python
 #!/usr/bin/env python3
@@ -543,13 +543,13 @@ class TestTztApiStructure:
             assert hasattr(mod, "__all__")
 ```
 
-- [ ] **Step 12: 更新根 `tests/test_structure.py`**
+- [x] **Step 12: 更新根 `tests/test_structure.py`**
 
 - L36 `from kline_fetcher import _base, min_kline, concept_plate` → `from tzt_api import _base, min_kline, concept_plate, trend`，函数体补 `assert hasattr(trend, "__all__")`
 - L46 `assert KLineFetcher.__module__ == "kline_fetcher._base"` → `assert KLineFetcher.__module__ == "tzt_api._base"`
 - 其余断言（`kline_fetcher.__version__ == "3.0.1"`、`test_backward_compat_shim`、TestDownloadLayer、TestConverterStatics、TestIndexDetection）**不动**——过渡期根包垫片仍要保它们绿。
 
-- [ ] **Step 13: 安装 + 三套验证 + 提交**
+- [x] **Step 13: 安装 + 三套验证 + 提交**
 
 ```bash
 conda run -n qlib pip install -e ./tzt-api -q
@@ -581,7 +581,7 @@ Expected: 两套全绿。
 - Consumes: Task 1 的 `tzt_api`（`KLineFetcher/MinKLineFetcher/...` + `tzt_api.market`）。
 - Produces: `kline_qlib` 包——`__init__` 导出 `KLineToQlib, QLIB_DAY_FIELDS, QLIB_MIN_FIELDS, POOL_MAP, load_stock_pool, download_day_kline, download_min_kline`，`__version__ == "1.0.0"`；CLI 实际入口 `kline_qlib.download:main` / `kline_qlib.server:main`；`kline_qlib.converter` 模块含 `_DEFAULT_QLIB_DATA_DIR`（Task 4 使用）。
 
-- [ ] **Step 1: 目录与 git mv**
+- [x] **Step 1: 目录与 git mv**
 
 ```bash
 cd /home/zxh/quant_projects/kline-fetcher
@@ -592,7 +592,7 @@ git mv kline_fetcher/download.py kline-qlib/kline_qlib/download.py
 git mv kline_fetcher/server.py kline-qlib/kline_qlib/server.py
 ```
 
-- [ ] **Step 2: 写 `kline-qlib/pyproject.toml`**
+- [x] **Step 2: 写 `kline-qlib/pyproject.toml`**
 
 ```toml
 [build-system]
@@ -623,7 +623,7 @@ include = ["kline_qlib*"]
 testpaths = ["tests"]
 ```
 
-- [ ] **Step 3: 写 `kline-qlib/kline_qlib/__init__.py`**
+- [x] **Step 3: 写 `kline-qlib/kline_qlib/__init__.py`**
 
 ```python
 """kline-qlib：K线行情 → qlib bin 数据管道。
@@ -650,20 +650,20 @@ __all__ = [
 __version__ = "1.0.0"
 ```
 
-- [ ] **Step 4: 修改 `kline-qlib/kline_qlib/converter.py`**
+- [x] **Step 4: 修改 `kline-qlib/kline_qlib/converter.py`**
 
 - L13 已是 `from tzt_api.market import INDEX_CODE_MAP, INDEX_CODE_PREFIXES`（Task 1 Step 9c 改过，随文件迁移生效，确认即可）
 - L64-66 `ensure_calendar` 延迟导入：`from kline_fetcher.fetcher import KLineFetcher` → `from tzt_api import KLineFetcher`
 - 模块 docstring 首段补：「v1.0.0 起位于 kline_qlib.converter（拆分自 kline-fetcher），旧路径 kline_fetcher.converter 由兼容壳转发。」
 
-- [ ] **Step 5: 修改 `kline-qlib/kline_qlib/download.py` 导入**（L15-16；只改导入，去重留 Task 4）
+- [x] **Step 5: 修改 `kline-qlib/kline_qlib/download.py` 导入**（L15-16；只改导入，去重留 Task 4）
 
 ```python
 from tzt_api import KLineFetcher, MinKLineFetcher
 from kline_qlib.converter import KLineToQlib
 ```
 
-- [ ] **Step 6: 修改 `kline-qlib/kline_qlib/server.py` 导入**（原 L33-40）
+- [x] **Step 6: 修改 `kline-qlib/kline_qlib/server.py` 导入**（原 L33-40）
 
 ```python
 from tzt_api import (
@@ -677,7 +677,7 @@ from kline_qlib import KLineToQlib, __version__
 
 （`app = FastAPI(..., version=__version__)` 引用不变；惰性单例函数体内类引用不变。）
 
-- [ ] **Step 7: 根 `kline_fetcher/converter.py`、`kline_fetcher/download.py` 替换为垫片**
+- [x] **Step 7: 根 `kline_fetcher/converter.py`、`kline_fetcher/download.py` 替换为垫片**
 
 `kline_fetcher/converter.py`：
 
@@ -713,11 +713,11 @@ __all__ = [
 ]
 ```
 
-- [ ] **Step 8: 根 `kline_fetcher/__init__.py` 的 KLineToQlib 导入改源**
+- [x] **Step 8: 根 `kline_fetcher/__init__.py` 的 KLineToQlib 导入改源**
 
 `from kline_fetcher.converter import KLineToQlib` → `from kline_qlib import KLineToQlib`
 
-- [ ] **Step 9: 写入侧测试迁入 `kline-qlib/tests/` 并改导入**
+- [x] **Step 9: 写入侧测试迁入 `kline-qlib/tests/` 并改导入**
 
 ```bash
 git mv tests/test_append_bin.py tests/test_build_min_arrays.py tests/test_calendar_generation.py tests/test_server.py kline-qlib/tests/
@@ -726,7 +726,7 @@ git mv tests/test_append_bin.py tests/test_build_min_arrays.py tests/test_calend
 - `test_append_bin.py` / `test_build_min_arrays.py` / `test_calendar_generation.py`：`from kline_fetcher.converter import ...` → `from kline_qlib.converter import ...`
 - `test_server.py`：`from kline_fetcher import server` → `from kline_qlib import server`；文件内所有 patch/引用字符串 `kline_fetcher.server` → `kline_qlib.server`（grep 逐处确认）
 
-- [ ] **Step 10: 新建 `kline-qlib/tests/test_structure_qlib.py`**
+- [x] **Step 10: 新建 `kline-qlib/tests/test_structure_qlib.py`**
 
 ```python
 #!/usr/bin/env python3
@@ -774,7 +774,7 @@ class TestKlineQlibStructure:
         assert QLIB_MIN_FIELDS == expected
 ```
 
-- [ ] **Step 11: 更新根 `tests/test_structure.py`**
+- [x] **Step 11: 更新根 `tests/test_structure.py`**
 
 - `TestDownloadLayer` 两处 `from kline_fetcher import download as dl` → `from kline_qlib import download as dl`
 - `TestConverterStatics` 的 `from kline_fetcher.converter import ...` → `from kline_qlib.converter import ...`
@@ -798,7 +798,7 @@ class TestCompatShims:
         assert TrendFetcher is real
 ```
 
-- [ ] **Step 12: 安装 + 三套验证 + 提交**
+- [x] **Step 12: 安装 + 三套验证 + 提交**
 
 ```bash
 conda run -n qlib pip install -e ./kline-qlib -q
@@ -827,7 +827,7 @@ Expected: 三套全绿（根套件只剩 `test_structure.py`，即垫片回归�
 - Consumes: Task 1/2 的 `tzt_api`、`kline_qlib`。
 - Produces: 独立兼容壳包 `kline-fetcher 3.1.0`（终版，deprecated）——覆盖「Global Constraints」列出的全部旧路径；仓库根不再有 Python 包。
 
-- [ ] **Step 1: 迁移根包为兼容壳目录**
+- [x] **Step 1: 迁移根包为兼容壳目录**
 
 ```bash
 cd /home/zxh/quant_projects/kline-fetcher
@@ -840,7 +840,7 @@ git rm pyproject.toml
 rm -rf kline_fetcher.egg-info build
 ```
 
-- [ ] **Step 2: 写 `compat-kline-fetcher/pyproject.toml`**
+- [x] **Step 2: 写 `compat-kline-fetcher/pyproject.toml`**
 
 ```toml
 [build-system]
@@ -864,7 +864,7 @@ include = ["kline_fetcher*"]
 testpaths = ["tests"]
 ```
 
-- [ ] **Step 3: 兼容壳 `__init__.py` 终版**（版本 3.1.0 + 去向说明）
+- [x] **Step 3: 兼容壳 `__init__.py` 终版**（版本 3.1.0 + 去向说明）
 
 ```python
 """kline-fetcher（deprecated 兼容壳，3.1.0 终版）。
@@ -901,7 +901,7 @@ __all__ = [
 __version__ = "3.1.0"
 ```
 
-- [ ] **Step 4: 新建 `compat-kline-fetcher/kline_fetcher/server.py` 垫片**
+- [x] **Step 4: 新建 `compat-kline-fetcher/kline_fetcher/server.py` 垫片**
 
 ```python
 #!/usr/bin/env python3
@@ -912,7 +912,7 @@ from kline_qlib.server import app, main
 __all__ = ["app", "main"]
 ```
 
-- [ ] **Step 5: 重写 `compat-kline-fetcher/tests/test_compat.py`**（旧 test_structure.py 全量旧路径回归 + 去向断言）
+- [x] **Step 5: 重写 `compat-kline-fetcher/tests/test_compat.py`**（旧 test_structure.py 全量旧路径回归 + 去向断言）
 
 ```python
 #!/usr/bin/env python3
@@ -971,7 +971,7 @@ class TestCompatShell:
         assert not KLineFetcher.is_index("sz000300")
 ```
 
-- [ ] **Step 6: 重装三包 + 全量验证 + 提交**
+- [x] **Step 6: 重装三包 + 全量验证 + 提交**
 
 ```bash
 conda run -n qlib pip install -e ./tzt-api -e ./kline-qlib -e ./compat-kline-fetcher -q
@@ -997,7 +997,7 @@ Expected: 三套全绿；仓库根已无 Python 包与根 pyproject。
 - Consumes: `tzt_api.market` 的 `MARKET_TO_PREFIX, infer_market, numeric_code, MARKET_CODE_MAP`；`kline_qlib.converter._DEFAULT_QLIB_DATA_DIR`。
 - Produces: 行为不变的 `KLineToQlib.code_to_qlib_dir(code: str) -> str`（一行委托）与 `load_stock_pool(pool_name: str, instruments_dir: Optional[str] = None) -> list`（不再实例化 KLineToQlib）。
 
-- [ ] **Step 1: 写跨包一致性测试 `kline-qlib/tests/test_cross_consistency.py`（先绿锁行为）**
+- [x] **Step 1: 写跨包一致性测试 `kline-qlib/tests/test_cross_consistency.py`（先绿锁行为）**
 
 ```python
 #!/usr/bin/env python3
@@ -1024,7 +1024,7 @@ def test_qlib_dir_matches_infer_market(code):
 Run: `cd kline-qlib && conda run -n qlib python -m pytest tests/test_cross_consistency.py -q`
 Expected: PASS（对现存量实现成立——等价性先锁死）
 
-- [ ] **Step 2: `converter.py` code_to_qlib_dir 一行化**
+- [x] **Step 2: `converter.py` code_to_qlib_dir 一行化**
 
 导入行改为：
 
@@ -1046,7 +1046,7 @@ from tzt_api.market import MARKET_TO_PREFIX, infer_market, numeric_code
         return MARKET_TO_PREFIX[infer_market(code)] + numeric_code(code)
 ```
 
-- [ ] **Step 3: `download.py` 三处修改**
+- [x] **Step 3: `download.py` 三处修改**
 
 3a. 删除 `PREFIX_TO_MARKET = {...}`（原 L34-38）；导入区补 `from tzt_api.market import MARKET_CODE_MAP`（与 Step 2 的 converter 导入互不影响）；`load_stock_pool` 内 `market = PREFIX_TO_MARKET.get(prefix)` → `market = MARKET_CODE_MAP.get(prefix)`。
 
@@ -1071,7 +1071,7 @@ def load_stock_pool(pool_name: str, instruments_dir: Optional[str] = None) -> li
     """
 ```
 
-- [ ] **Step 4: 回归 + 提交**
+- [x] **Step 4: 回归 + 提交**
 
 ```bash
 cd kline-qlib && conda run -n qlib python -m pytest -q && cd ..
@@ -1094,7 +1094,7 @@ Expected: 全绿（`test_cross_consistency` + `test_structure_qlib::test_code_to
 - Consumes: 无。
 - Produces: 仅含 `api:` 与 `kline:` 两节的配置；三包各自 CHANGELOG 起点。
 
-- [ ] **Step 1: 复核无代码读取死键**
+- [x] **Step 1: 复核无代码读取死键**
 
 ```bash
 grep -rn "kline_type_map\|market_map\|qlib_fields" --include="*.py" tzt-api/ kline-qlib/ compat-kline-fetcher/ || echo "NO_CODE_READS"
@@ -1102,9 +1102,9 @@ grep -rn "kline_type_map\|market_map\|qlib_fields" --include="*.py" tzt-api/ kli
 
 Expected: `NO_CODE_READS`（若出现引用则停下排查，勿删）
 
-- [ ] **Step 2: 删除 yaml 三键**（保留 `api:` 与 `kline:` 两节，其余逐字不动）
+- [x] **Step 2: 删除 yaml 三键**（保留 `api:` 与 `kline:` 两节，其余逐字不动）
 
-- [ ] **Step 3: 三个 CHANGELOG**
+- [x] **Step 3: 三个 CHANGELOG**
 
 `tzt-api/CHANGELOG.md`：
 
@@ -1146,7 +1146,7 @@ Expected: `NO_CODE_READS`（若出现引用则停下排查，勿删）
 - 使用方迁移完成后本包可卸载删除
 ```
 
-- [ ] **Step 4: 回归 + 提交**
+- [x] **Step 4: 回归 + 提交**
 
 ```bash
 cd tzt-api && conda run -n qlib python -m pytest -q && cd ..
@@ -1171,7 +1171,7 @@ Expected: tzt-api 套件绿；打印 `dict_keys(['api', 'kline'])`。
 - Consumes: Task 1-5 之后的实际布局。
 - Produces: 与代码一致的文档；mkdocs strict 通过。
 
-- [ ] **Step 1: 重写 `AGENTS.md` 架构节**——「## 架构」树整体替换为：
+- [x] **Step 1: 重写 `AGENTS.md` 架构节**——「## 架构」树整体替换为：
 
 ```
 monorepo（v3.1.0 拆分）：
@@ -1195,7 +1195,7 @@ compat-kline-fetcher/     ← 旧 kline-fetcher 兼容壳（3.1.0 终版，纯�
 
 数据流：`API → tzt_api（获取+单位转换）→ kline_qlib.download（批量调度）→ kline_qlib.converter（对齐日历+写入bin）`
 
-- [ ] **Step 2: `AGENTS.md` 其余三处**
+- [x] **Step 2: `AGENTS.md` 其余三处**
 
 - 「导入方式」节改为：
 
@@ -1212,7 +1212,7 @@ from kline_fetcher.fetcher import KLineFetcher, MARKET_CODE_MAP  # 仍可用
 - 「新增指数支持」：`向 _base.py 的 INDEX_CODE_MAP 添加` → `向 tzt-api/tzt_api/market.py 的 INDEX_CODE_MAP 添加，infer_market / code_to_qlib_dir / is_index 自动生效`
 - 「版本变更记录」速记追加：`- **v3.1.0（拆分）**：monorepo 双包——tzt-api（行情请求）+ kline-qlib（qlib 写入）+ kline-fetcher 兼容壳；市场规则收敛 tzt_api.market 单一事实源`
 
-- [ ] **Step 3: README 与 docs 批量更新**
+- [x] **Step 3: README 与 docs 批量更新**
 
 逐文件 `grep -n` 确认后替换（关键映射表）：
 
@@ -1227,9 +1227,9 @@ from kline_fetcher.fetcher import KLineFetcher, MARKET_CODE_MAP  # 仍可用
 | 安装说明 `pip install kline-fetcher` / `-e .` | `pip install -e ./tzt-api -e ./kline-qlib`（兼容壳可选 `-e ./compat-kline-fetcher`） |
 | 测试命令 `pytest` | `cd tzt-api && pytest` / `cd kline-qlib && pytest` / `cd compat-kline-fetcher && pytest` |
 
-- [ ] **Step 4: `docs/CHANGELOG.md` 新增 3.1.0 条目**（`[Unreleased]` 升格为 `[3.1.0] - 2026-08-23`，既有 Unreleased 内容并入，追加「🔧 重构」小节：拆分为 tzt-api + kline-qlib + 兼容壳、market 单一事实源、死键清理、CLI 迁移至 kline-qlib、旧路径经兼容壳保持可用）
+- [x] **Step 4: `docs/CHANGELOG.md` 新增 3.1.0 条目**（`[Unreleased]` 升格为 `[3.1.0] - 2026-08-23`，既有 Unreleased 内容并入，追加「🔧 重构」小节：拆分为 tzt-api + kline-qlib + 兼容壳、market 单一事实源、死键清理、CLI 迁移至 kline-qlib、旧路径经兼容壳保持可用）
 
-- [ ] **Step 5: mkdocs strict 验证 + 提交**
+- [x] **Step 5: mkdocs strict 验证 + 提交**
 
 ```bash
 conda run -n qlib mkdocs build --strict && rm -rf site
@@ -1250,14 +1250,14 @@ Expected: 构建成功（仅既有中焯文档 INFO 提示，无 WARNING）。
 - Consumes: Task 1-6 全部成果。
 - Produces: 验证通过的 v3.1.0 拆分终态。
 
-- [ ] **Step 1: 干净重装三包**
+- [x] **Step 1: 干净重装三包**
 
 ```bash
 conda run -n qlib pip uninstall -y kline-fetcher tzt-api kline-qlib -q
 conda run -n qlib pip install -e ./tzt-api -e ./kline-qlib -e ./compat-kline-fetcher -q
 ```
 
-- [ ] **Step 2: 三套测试 + 依赖隔离检查**
+- [x] **Step 2: 三套测试 + 依赖隔离检查**
 
 ```bash
 cd tzt-api && conda run -n qlib python -m pytest -q && cd ..
@@ -1266,7 +1266,7 @@ cd compat-kline-fetcher && conda run -n qlib python -m pytest -q && cd ..
 conda run -n qlib pip show tzt-api | grep -i requires   # Expected: Requests, PyYAML（无 numpy）
 ```
 
-- [ ] **Step 3: CLI smoke + 旧路径全量模拟**
+- [x] **Step 3: CLI smoke + 旧路径全量模拟**
 
 ```bash
 conda run -n qlib kline-download --help >/dev/null && echo CLI_DOWNLOAD_OK
@@ -1286,7 +1286,7 @@ print('COMPAT_ALL_OK')
 
 Expected: `CLI_DOWNLOAD_OK` / `CLI_SERVER_OK` / `COMPAT_ALL_OK`
 
-- [ ] **Step 4:（可选，需网络）集成测试抽查**
+- [x] **Step 4:（可选，需网络）集成测试抽查**
 
 ```bash
 cd tzt-api && KLINE_API_BASE_URL=http://183.242.5.14:7778 conda run -n qlib python -m pytest -m integration -k indices -q && cd ..
@@ -1294,7 +1294,7 @@ cd tzt-api && KLINE_API_BASE_URL=http://183.242.5.14:7778 conda run -n qlib pyth
 
 Expected: PASS（行情行为不变）。
 
-- [ ] **Step 5: 收尾提交与汇报**
+- [x] **Step 5: 收尾提交与汇报**
 
 - `docs/refactor-plan-monorepo-split.md` 状态行改：`- **状态**：已完成（2026-08-23，分支 refactor/monorepo-split）`
 - 清理：`rm -rf build/`

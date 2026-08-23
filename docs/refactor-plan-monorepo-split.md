@@ -1,7 +1,7 @@
 # 架构拆分重构计划：monorepo 双包（tzt-api + kline-qlib）+ kline-fetcher 兼容壳
 
 - **日期**：2026-08-23（本文档取代同日早先的单包分层方案 `refactor-plan-3.1.0.md`）
-- **状态**：待实施（方案已确认，未开始改码）
+- **状态**：已完成（2026-08-23，分支 refactor/monorepo-split）
 - **方向决策**（用户确认）：
   1. **拆成两个项目**：`tzt-api`（仅行情请求）+ `kline-qlib`（qlib 写入）；
   2. **monorepo**：本仓库内两个发行包，不拆仓库；

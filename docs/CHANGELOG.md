@@ -1,6 +1,6 @@
 # Changelog
 
-本文件记录 kline-fetcher 的版本变更。格式遵循 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
+本文件记录本仓库（kline-fetcher monorepo：tzt-api + kline-qlib + 兼容壳）的版本变更。格式遵循 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
 ## [Unreleased]
 
