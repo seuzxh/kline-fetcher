@@ -67,6 +67,57 @@ class TestFactorCalculation:
         assert math.isnan(result[0]["factor"])
         assert math.isnan(result[0]["volume"])
 
+    def test_hfq_close_zero_yields_nan_factor(self, fetcher):
+        """hfq_close <= 0 时（数据源 bug），整条记录 OHLCV+factor 均为 NaN，不崩溃。"""
+        hfq = [_bar("2026-06-10", close=0.0, volume=1000)]
+        none = [_bar("2026-06-10", close=1000.0, volume=5000)]
+
+        with mock.patch.object(fetcher, "fetch_day_kline", side_effect=[hfq, none]):
+            result = fetcher.fetch_day_kline_with_factor("600519", count=-1, market=1)
+
+        assert math.isnan(result[0]["factor"])
+        assert math.isnan(result[0]["volume"])
+        assert math.isnan(result[0]["close"])
+        assert math.isnan(result[0]["open"])
+
+    def test_hfq_close_negative_yields_nan(self, fetcher):
+        """hfq_close 为负数时（数据源 bug），整条记录标记为 NaN。"""
+        hfq = [_bar("2026-06-10", close=-0.5, volume=1000)]
+        none = [_bar("2026-06-10", close=1.58, volume=5000)]
+
+        with mock.patch.object(fetcher, "fetch_day_kline", side_effect=[hfq, none]):
+            result = fetcher.fetch_day_kline_with_factor("600180", count=-1, market=1)
+
+        assert math.isnan(result[0]["factor"])
+        assert math.isnan(result[0]["volume"])
+        assert math.isnan(result[0]["close"])
+
+    def test_hfq_factor_less_than_one_yields_nan(self, fetcher):
+        """hfq_close>0 但 factor<1 时（数据源复权计算错乱，如 600180），整条标记 NaN。"""
+        hfq = [_bar("2026-08-14", close=0.225, volume=1000)]
+        none = [_bar("2026-08-14", close=1.67, volume=5000)]
+
+        with mock.patch.object(fetcher, "fetch_day_kline", side_effect=[hfq, none]):
+            result = fetcher.fetch_day_kline_with_factor("600180", count=-1, market=1)
+
+        assert math.isnan(result[0]["factor"])
+        assert math.isnan(result[0]["volume"])
+        assert math.isnan(result[0]["close"])
+        assert math.isnan(result[0]["open"])
+
+    def test_hfq_low_negative_close_positive_yields_nan(self, fetcher):
+        """hfq_close>0 但 low<0 时（如 600180 0814: low=-12.5 close=2.25），整条标记 NaN。"""
+        bar = {"date": "2026-08-14", "open": 0.25, "high": 2.25,
+               "low": -1.25, "close": 2.25, "volume": 1000, "amount": 0}
+        hfq = [bar]
+        none = [_bar("2026-08-14", close=1.67, volume=5000)]
+
+        with mock.patch.object(fetcher, "fetch_day_kline", side_effect=[hfq, none]):
+            result = fetcher.fetch_day_kline_with_factor("600180", count=-1, market=1)
+
+        assert math.isnan(result[0]["factor"])
+        assert math.isnan(result[0]["close"])
+
     def test_date_missing_in_none_yields_nan(self, fetcher):
         """none 数据缺某日时，该日 factor=NaN。"""
         hfq = [_bar("2026-06-10", close=6000.0, volume=1000),
