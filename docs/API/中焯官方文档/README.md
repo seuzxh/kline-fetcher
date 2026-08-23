@@ -66,4 +66,4 @@
 
 - `.md`：PDF 经 LAS 解析的 Markdown（表格保留为 HTML `<table>`，封面 logo 图片已去除）；`.txt`：DOCX 提取文本（表格以 `|` 分隔，docx 双栏出入参表格的行顺序可能有交错，阅读时以上下文对照为准）。
 - docx 为 2024-06 wiki 快照，PDF 为 2025-12 更新版；核心协议（10000/10001/10002/10005/10007）定义一致。
-- 本项目实测结论（含与文档的出入）见 [../concept_plate_api.md](../concept_plate_api.md) 与 [../概念板块请求API.md](../概念板块请求API.md)（iOS 抓包原始参数）。
+- 本项目实测结论（含与文档的出入）见 [../../concept_plate_api.md](../../concept_plate_api.md) 与 [../概念板块请求API.md](../概念板块请求API.md)（iOS 抓包原始参数）。
