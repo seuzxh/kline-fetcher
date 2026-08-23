@@ -1,6 +1,6 @@
 # 概念板块接口文档
 
-> 实现位置：`kline_fetcher/concept_plate.py`（`ConceptPlateFetcher`）
+> 实现位置：`tzt-api/tzt_api/concept_plate.py`（`ConceptPlateFetcher`；兼容壳 `kline_fetcher.concept_plate` 仍可用）
 > 原始抓包参数：[docs/API/概念板块请求API.md](API/概念板块请求API.md)（iOS 客户端抓取，部分参数冗余）
 > 本文所有结论基于 **2026-08-22 真实 API 实测**。
 
@@ -14,7 +14,7 @@
 | 4 | `get_stock_concept_plates(code, market, plate_type)` | 10000 | 股票所属板块 | ✅ **已修复可用**（官方属性 900/901/923，见 4.1） |
 
 ```python
-from kline_fetcher import ConceptPlateFetcher
+from tzt_api import ConceptPlateFetcher
 
 fetcher = ConceptPlateFetcher()
 plates = fetcher.get_all_concept_plates()

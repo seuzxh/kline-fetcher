@@ -1,20 +1,20 @@
 # kline-fetcher 架构文档
 
-> 适用版本：v3.0.x。本文档描述项目的整体架构、模块划分与数据流。
+> 适用版本：v3.1.0（monorepo 双包）。本文档描述项目的整体架构、模块划分与数据流。
 > 接口签名与参数明细见 [api-reference.md](api-reference.md)，实现层面的设计决策见 [design.md](design.md)。
 
 ## 1. 项目定位
 
-kline-fetcher 是一个 **A 股行情数据获取与 Qlib 格式转换工具**，定位为量化回测框架（Qlib）的数据管道上游：
+kline-fetcher 仓库是 **A 股行情数据获取与 Qlib 格式转换工具集**（v3.1.0 起拆为 `tzt-api` + `kline-qlib` 双包，旧包名经兼容壳可用），定位为量化回测框架（Qlib）的数据管道上游：
 
 ```
 中焯行情 API（第三方数据源）
         │
         ▼
-  kline-fetcher（本项目）
-  ├─ 获取层：抓取日K/分钟K/分时/概念板块数据并统一单位
-  ├─ 调度层：按股池批量下载、增量判断
-  └─ 转换层：对齐交易日历，写入 qlib bin 格式
+  本仓库（monorepo）
+  ├─ tzt-api（获取层）：抓取日K/分钟K/分时/概念板块数据并统一单位
+  ├─ kline-qlib（调度+转换层）：按股池批量下载、增量判断、对齐交易日历写入 qlib bin
+  └─ compat-kline-fetcher（兼容壳）：旧包名 kline-fetcher 纯转发，deprecated
         │
         ▼
   qlib_data/ 目录（calendars + instruments + features）
@@ -28,49 +28,44 @@ kline-fetcher 是一个 **A 股行情数据获取与 Qlib 格式转换工具**�
 1. **单一职责分层**：请求、解析、调度、存储各自独立，任一层可单独测试；
 2. **数据正确性优先**：单位换算、复权因子、脏数据防御都有实测依据和单元测试；
 3. **增量友好**：后复权存储 + 增量追加，历史数据不因除权而失效；
-4. **向后兼容**：v2.1.0 前的旧导入路径通过垫片保留。
+4. **向后兼容**：旧导入路径（v2.1.0 前 / v3.1.0 前）通过兼容壳保留。
 
 ## 2. 模块划分
 
 ```
-kline-fetcher/
-├── pyproject.toml                # 包元数据、依赖、CLI 入口声明
-├── README.md                     # 面向使用者的完整文档（含教程与示例）
-├── AGENTS.md                     # AI 代理工作说明（仓库根目录，供工具读取）
-├── docs/                         # 项目文档
-│   ├── architecture.md           # 本文档：架构
-│   ├── design.md                 # 技术方案：复权/存储/增量等设计决策
-│   ├── api-reference.md          # 包 API 参考（类/方法/参数/返回值）
-│   ├── concept_plate_api.md      # 概念板块接口深度文档（实测响应结构/分页/已知限制）
-│   ├── CHANGELOG.md              # 版本变更记录
-│   ├── REVIEW_ISSUES.md          # code review 待办跟踪
-│   └── API/概念板块请求API.md      # 中焯概念板块接口原始抓包记录（上游参考）
-├── tests/                        # 测试（单元测试默认运行，集成测试需 API）
-└── kline_fetcher/                # Python 包
-    ├── __init__.py               # 包入口：导出公共 API，__version__
-    ├── _base.py                  # KLineFetcher 基类：共享底座 + 日K方法 + AdjustType
-    ├── min_kline.py              # MinKLineFetcher(KLineFetcher)：分钟K方法
-    ├── concept_plate.py          # ConceptPlateFetcher(KLineFetcher)：概念板块方法
-    ├── trend.py                  # TrendFetcher(KLineFetcher)：分时数据方法
-    ├── fetcher.py                # 兼容垫片：保留 v2.1.0 前的旧导入路径
-    ├── converter.py              # KLineToQlib：日历管理 + bin 读写 + 增量追加
-    ├── download.py               # 批量下载入口（函数 + kline-download CLI）
-    ├── server.py                 # 在线调试服务（FastAPI Swagger UI + kline-server CLI，可选依赖）
-    └── config/
-        └── kline_config.yaml     # 默认配置（API 行为、K线参数、字段映射）
+monorepo（v3.1.0 拆分）：
+tzt-api/                  ← 包①：纯行情请求（零 numpy）
+├── pyproject.toml        #   name: tzt-api；deps: requests, PyYAML
+└── tzt_api/
+    ├── __init__.py       #   导出 KLineFetcher, MinKLineFetcher, ConceptPlateFetcher, TrendFetcher, AdjustType
+    ├── market.py         #   市场规则单一事实源（INDEX_CODE_MAP/infer_market 等，两包共享）
+    ├── _base.py          #   KLineFetcher 基类：共享底座 + 日K方法
+    ├── min_kline.py / concept_plate.py / trend.py
+    └── config/kline_config.yaml
+kline-qlib/               ← 包②：qlib 写入（依赖 tzt-api，单向）
+├── pyproject.toml        #   name: kline-qlib；CLI: kline-download / kline-server
+└── kline_qlib/
+    ├── converter.py      #   KLineToQlib：K线 → qlib bin
+    ├── download.py       #   批量下载编排 + CLI
+    └── server.py         #   kline-server 调试服务
+compat-kline-fetcher/     ← 旧 kline-fetcher 兼容壳（3.1.0 终版，纯转发，deprecated）
+└── kline_fetcher/        #   __init__ / fetcher / converter / download / server 垫片
 ```
+
+数据流：`API → tzt_api（获取+单位转换）→ kline_qlib.download（批量调度）→ kline_qlib.converter（对齐日历+写入bin）`
 
 各模块职责边界：
 
 | 模块 | 职责 | 不负责 |
 |------|------|--------|
-| `_base.py` | HTTP 请求/限流/重试、参数构造、单位换算、K线解析、日K与日历方法 | 分钟K翻页、板块、分时等特定接口逻辑 |
-| `min_kline.py` | freq→klinetype 映射、locator 翻页、去重排序 | 请求与解析（继承基类） |
-| `concept_plate.py` | 板块列表/板块K线/成份股/所属板块 4 个接口 | 个股行情 |
-| `trend.py` | 分时参数构造（Action=10001）、盘前/盘中数据解析 | K线数据 |
-| `converter.py` | 交易日历（日/分钟）、bin 文件读写、增量合并、覆盖检查 | 网络请求（除日历生成外） |
-| `download.py` | 股池加载、批量调度、增量跳过、进度统计 | 数据格式细节（委托 converter） |
-| `server.py` | 在线调试服务：获取类方法 → REST 端点，Swagger UI（可选依赖） | bin 写入（只读端点，防误写） |
+| `tzt_api/_base.py` | HTTP 请求/限流/重试、参数构造、单位换算、K线解析、日K与日历方法 | 分钟K翻页、板块、分时等特定接口逻辑 |
+| `tzt_api/market.py` | 市场规则单一事实源：INDEX_CODE_MAP、infer_market、is_index 等 | 网络请求 |
+| `tzt_api/min_kline.py` | freq→klinetype 映射、locator 翻页、去重排序 | 请求与解析（继承基类） |
+| `tzt_api/concept_plate.py` | 板块列表/板块K线/成份股/所属板块 4 个接口 | 个股行情 |
+| `tzt_api/trend.py` | 分时参数构造（Action=10001）、盘前/盘中数据解析 | K线数据 |
+| `kline_qlib/converter.py` | 交易日历（日/分钟）、bin 文件读写、增量合并、覆盖检查 | 网络请求（除日历生成外） |
+| `kline_qlib/download.py` | 股池加载、批量调度、增量跳过、进度统计 | 数据格式细节（委托 converter） |
+| `kline_qlib/server.py` | 在线调试服务：获取类方法 → REST 端点，Swagger UI（可选依赖） | bin 写入（只读端点，防误写） |
 
 ## 3. 类继承结构
 
@@ -91,7 +86,7 @@ KLineToQlib (converter.py)               ← 独立类，不继承（转换层�
 - 继承复用共享底座（`_request`/`_build_params`/`_parse_kline_items`/单位换算），子类只写差异部分；
 - 用户按需导入所需子类，API 表面积更小。
 
-**兼容垫片**：`fetcher.py` 重新导出全部符号，旧路径 `from kline_fetcher.fetcher import KLineFetcher` 仍可用。唯一破坏：分钟K/板块方法需改用对应子类调用。
+**兼容垫片**：v3.1.0 起旧路径 `from kline_fetcher.fetcher import KLineFetcher` 经 `compat-kline-fetcher` 兼容壳仍可用（deprecated，迁移完成后撤）。唯一破坏：分钟K/板块方法需改用对应子类调用。
 
 ## 4. 数据流
 
@@ -152,7 +147,7 @@ bin 文件格式（Qlib 标准）：float32 小端序；首元素为该股票数
 
 1. **环境变量**：`KLINE_API_BASE_URL`（API 地址，必填）、`KLINE_CONFIG_PATH`（自定义配置路径）、`QLIB_DATA_DIR`（数据目录）；
 2. **自定义配置文件**：构造 `KLineFetcher(config_path=...)` 传入；
-3. **包内默认配置**：`kline_fetcher/config/kline_config.yaml`。
+3. **包内默认配置**：`tzt-api/tzt_api/config/kline_config.yaml`。
 
 API 地址不进配置文件（避免敏感地址提交入库），只走环境变量或显式覆盖 `api.base_url`。
 

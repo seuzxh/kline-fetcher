@@ -1,6 +1,6 @@
-# kline-fetcher
+# kline-fetcher（monorepo）
 
-A 股 K 线数据获取与 qlib 格式转换工具。基于中焯行情 API 获取行情数据，转换为 Qlib 标准 `.bin` 格式，供量化回测框架使用。无需 Token 认证，支持 `pip install` 安装。
+A 股 K 线数据获取与 qlib 格式转换工具集（v3.1.0 起拆分为双包）：`tzt-api`（行情请求）+ `kline-qlib`（qlib 写入），旧包名 `kline-fetcher` 经 `compat-kline-fetcher` 兼容壳保持可用。基于中焯行情 API 获取行情数据，转换为 Qlib 标准 `.bin` 格式，供量化回测框架使用。无需 Token 认证，支持 `pip install` 安装。
 
 ## 核心能力
 
@@ -16,13 +16,15 @@ A 股 K 线数据获取与 qlib 格式转换工具。基于中焯行情 API 获�
 ## 安装与快速开始
 
 ```bash
-pip install -e .                    # 基础安装
-pip install 'kline-fetcher[server]' # 需要在线调试服务时
+pip install -e ./tzt-api -e ./kline-qlib          # 双包安装
+pip install -e ./compat-kline-fetcher              # 可选：旧包名兼容壳
+pip install 'kline-qlib[server]'                   # 需要在线调试服务时
 export KLINE_API_BASE_URL=...       # 必填，中焯行情 API 地址
 ```
 
 ```python
-from kline_fetcher import KLineFetcher, MinKLineFetcher, KLineToQlib
+from tzt_api import KLineFetcher, MinKLineFetcher
+from kline_qlib import KLineToQlib
 
 fetcher = KLineFetcher()           # 日K线
 data = fetcher.fetch_day_kline("600519", count=10)

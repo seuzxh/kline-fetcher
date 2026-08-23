@@ -1,6 +1,6 @@
 # kline-fetcher API 参考
 
-> 适用版本：v3.0.x。所有公开类与方法的参数、返回值说明。
+> 适用版本：v3.1.0（monorepo 双包：`tzt-api` + `kline-qlib`）。所有公开类与方法的参数、返回值说明。
 > 设计决策背景见 [design.md](design.md)。方法默认返回 `None` 表示请求失败（不抛异常），日志含失败原因。
 
 ## 目录
@@ -20,18 +20,18 @@
 ## 导入方式
 
 ```python
-# 推荐（v3.0.0+）：从包入口按需导入
-from kline_fetcher import (
+# 推荐（v3.1.0+）：按包导入
+from tzt_api import (
     KLineFetcher,          # 基类（日K + 共享底座）
     MinKLineFetcher,       # 分钟K线
     ConceptPlateFetcher,   # 概念板块
     TrendFetcher,          # 分时数据
-    KLineToQlib,           # K线 → qlib bin 转换
     AdjustType,            # 复权方式枚举
 )
+from kline_qlib import KLineToQlib          # K线 → qlib bin 转换
 
-# 兼容（v2.1.0 前）：旧路径仍可用（fetcher.py 为兼容垫片，亦导出全部子类）
-from kline_fetcher.fetcher import KLineFetcher
+# 兼容（compat-kline-fetcher 兼容壳，deprecated，迁移完成后撤）
+from kline_fetcher.fetcher import KLineFetcher  # 仍可用
 ```
 
 ## AdjustType 复权枚举
@@ -246,11 +246,11 @@ kline-download --start 2024-01-01 --end 2024-12-31 [options]
 
 ## server 在线调试服务
 
-`kline_fetcher/server.py`：FastAPI 薄包装，把获取类方法映射为 REST 端点，自带 Swagger UI（`/docs`）与 ReDoc（`/redoc`）。可选依赖：`pip install 'kline-fetcher[server]'`。
+`kline_qlib/server.py`：FastAPI 薄包装，把获取类方法映射为 REST 端点，自带 Swagger UI（`/docs`）与 ReDoc（`/redoc`）。可选依赖：`pip install 'kline-qlib[server]'`。
 
 ```bash
 kline-server [--host 127.0.0.1] [--port 8000] [--reload]
-uvicorn kline_fetcher.server:app        # 等效启动方式
+uvicorn kline_qlib.server:app           # 等效启动方式（兼容壳 kline_fetcher.server 仍可用）
 ```
 
 | 分组 | 端点 | 对应方法 |

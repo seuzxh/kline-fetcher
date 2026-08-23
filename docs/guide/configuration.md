@@ -1,6 +1,6 @@
 # 配置
 
-配置分三级：**环境变量 > 自定义配置文件 > 包内默认配置**（`kline_fetcher/config/kline_config.yaml`）。
+配置分三级：**环境变量 > 自定义配置文件 > 包内默认配置**（`tzt-api/tzt_api/config/kline_config.yaml`）。
 
 ## 配置文件
 

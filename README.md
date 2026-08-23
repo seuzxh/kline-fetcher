@@ -4,18 +4,24 @@
 
 ## 模块概述
 
-`kline-fetcher` 是一个独立的 Python 包，基于中焯行情 API 获取 A 股 K 线数据，并转换为 qlib bin 格式存储。无需 Token 认证，支持 `pip install` 安装。
+本仓库（v3.1.0 起 monorepo 双包）基于中焯行情 API 获取 A 股 K 线数据，并转换为 qlib bin 格式存储。无需 Token 认证，支持 `pip install` 安装。
+
+- `tzt-api`：纯行情请求包（零 numpy）
+- `kline-qlib`：qlib 写入包（依赖 tzt-api，CLI `kline-download` / `kline-server`）
+- `compat-kline-fetcher`：旧包名 `kline-fetcher` 兼容壳（纯转发，deprecated，迁移完成后撤）
 
 **安装**：
 
 ```bash
-pip install -e /root/Projects/0.qlib_pro/data_v2
+pip install -e ./tzt-api -e ./kline-qlib   # 双包安装
+pip install -e ./compat-kline-fetcher      # 可选：旧包名兼容壳
 ```
 
 **快速开始**：
 
 ```python
-from kline_fetcher import KLineFetcher, MinKLineFetcher, KLineToQlib
+from tzt_api import KLineFetcher, MinKLineFetcher
+from kline_qlib import KLineToQlib
 
 fetcher = KLineFetcher()           # 日K线
 min_fetcher = MinKLineFetcher()    # 分钟K线
@@ -55,46 +61,34 @@ min_data = min_fetcher.fetch_min_kline("600519", freq="5min", count=10)
 ## 目录结构
 
 ```
-kline-fetcher/                    # 包项目根目录
-├── pyproject.toml                # 包元数据和依赖声明
-├── README.md                     # 本文档
-├── AGENTS.md                     # 项目说明（给 AI 代理用）
-├── docs/                         # 项目文档目录
-│   ├── architecture.md           # 架构文档（模块划分、继承结构、数据流）
-│   ├── design.md                 # 技术方案（复权、bin 格式、增量追加、日历对齐）
-│   ├── api-reference.md          # 包 API 参考（类/方法/参数/返回值）
-│   ├── CHANGELOG.md              # 版本变更记录
-│   ├── REVIEW_ISSUES.md          # code review 待办跟踪
-│   └── API/
-│       └── 概念板块请求API.md      # 概念板块接口原始抓包记录
-├── tests/                        # 测试文件目录
-│   ├── __init__.py               # 测试包文件
-│   ├── test_append_bin.py        # _append_bin 增量合并单元测试
-│   ├── test_build_min_arrays.py  # _build_min_arrays 缺 time 字段处理单元测试
-│   ├── test_factor_calc.py       # factor 数值正确性单元测试
-│   ├── test_calendar_generation.py # 日历边界（11:30/15:00）单元测试
-│   ├── test_structure.py         # 包结构/导入/静态方法单元测试
-│   ├── test_concept_plates.py    # 概念板块集成测试（需 API）
-│   └── test_split_interfaces.py  # 三类 fetcher 端到端集成测试（需 API）
-└── kline_fetcher/                # Python 包目录
-    ├── __init__.py               # 导出公共 API（KLineFetcher/MinKLineFetcher/ConceptPlateFetcher/KLineToQlib/AdjustType）
-    ├── _base.py                  # KLineFetcher 基类（共享底座 + 日K方法）
-    ├── min_kline.py              # MinKLineFetcher(KLineFetcher) — 分钟K线方法
-    ├── concept_plate.py          # ConceptPlateFetcher(KLineFetcher) — 概念板块方法
-    ├── trend.py                  # TrendFetcher(KLineFetcher) — 分时数据方法（集合竞价+盘中）
-    ├── fetcher.py                # 兼容垫片（v2.1.0 前的单文件实现已拆分，保留旧导入路径）
-    ├── converter.py              # KLineToQlib — 数据转换为 qlib bin 格式
-    ├── download.py               # CLI 批量下载入口
-    ├── server.py                 # 在线调试服务（FastAPI Swagger UI，可选依赖 [server]）
-    └── config/
-        └── kline_config.yaml     # 默认配置
+monorepo（v3.1.0 拆分）：
+tzt-api/                  ← 包①：纯行情请求（零 numpy）
+├── pyproject.toml        #   name: tzt-api；deps: requests, PyYAML
+├── tests/                #   行情请求包测试
+└── tzt_api/
+    ├── __init__.py       #   导出 KLineFetcher, MinKLineFetcher, ConceptPlateFetcher, TrendFetcher, AdjustType
+    ├── market.py         #   市场规则单一事实源（INDEX_CODE_MAP/infer_market 等，两包共享）
+    ├── _base.py          #   KLineFetcher 基类：共享底座 + 日K方法
+    ├── min_kline.py / concept_plate.py / trend.py
+    └── config/kline_config.yaml
+kline-qlib/               ← 包②：qlib 写入（依赖 tzt-api，单向）
+├── pyproject.toml        #   name: kline-qlib；CLI: kline-download / kline-server
+├── tests/                #   qlib 写入包测试
+└── kline_qlib/
+    ├── converter.py      #   KLineToQlib：K线 → qlib bin
+    ├── download.py       #   批量下载编排 + CLI
+    └── server.py         #   kline-server 调试服务
+compat-kline-fetcher/     ← 旧 kline-fetcher 兼容壳（3.1.0 终版，纯转发，deprecated）
+├── tests/                #   兼容壳转发测试
+└── kline_fetcher/        #   __init__ / fetcher / converter / download / server 垫片
+docs/                     # 项目文档（architecture/design/api-reference/CHANGELOG 等）
 ```
 
 ## 配置
 
 ### 配置文件
 
-包内默认配置：`data_v2/config/kline_config.yaml`
+包内默认配置：`tzt-api/tzt_api/config/kline_config.yaml`
 
 项目级配置（优先）：`/root/Projects/0.qlib_pro/config/kline_config.yaml`
 
@@ -254,7 +248,7 @@ def fetch_day_kline(
 **示例**：
 
 ```python
-from kline_fetcher import KLineFetcher
+from tzt_api import KLineFetcher
 fetcher = KLineFetcher()
 
 data = fetcher.fetch_day_kline("600519", count=200)
@@ -338,7 +332,7 @@ def get_all_concept_plates(self) -> Optional[List[Dict]]
 **示例**：
 
 ```python
-from kline_fetcher import ConceptPlateFetcher
+from tzt_api import ConceptPlateFetcher
 fetcher = ConceptPlateFetcher()
 
 plates = fetcher.get_all_concept_plates()
@@ -365,7 +359,7 @@ def get_concept_plate_kline(
 **示例**：
 
 ```python
-from kline_fetcher import ConceptPlateFetcher
+from tzt_api import ConceptPlateFetcher
 fetcher = ConceptPlateFetcher()
 
 # 获取概念板块K线数据
@@ -408,7 +402,7 @@ def get_concept_plate_stocks(
 **示例**：
 
 ```python
-from kline_fetcher import ConceptPlateFetcher
+from tzt_api import ConceptPlateFetcher
 fetcher = ConceptPlateFetcher()
 
 # 获取概念板块成份股
@@ -436,7 +430,7 @@ def get_stock_concept_plates(
 **示例**：
 
 ```python
-from kline_fetcher import ConceptPlateFetcher
+from tzt_api import ConceptPlateFetcher
 fetcher = ConceptPlateFetcher()
 
 # 获取股票所属概念板块
@@ -525,7 +519,7 @@ def fetch_trend(self, code: str, date: Optional[str] = None, market: Optional[in
 **示例**：
 
 ```python
-from kline_fetcher import TrendFetcher
+from tzt_api import TrendFetcher
 fetcher = TrendFetcher()
 
 # 获取当日分时
@@ -582,7 +576,8 @@ def ensure_calendar(
 4. 重新加载日历到内存
 
 ```python
-from kline_fetcher import KLineFetcher, KLineToQlib
+from tzt_api import KLineFetcher
+from kline_qlib import KLineToQlib
 
 converter = KLineToQlib(qlib_data_dir="/path/to/qlib_data")
 converter.ensure_calendar()  # 自动从 API 获取交易日历
@@ -690,7 +685,7 @@ def get_missing_range(self, code: str, start_date: str, end_date: str) -> Option
 kline-download --start 2020-01-02 --end 2026-05-15 --pool all
 
 # 或通过 Python 模块运行
-python -m kline_fetcher.download --start 2020-01-02 --end 2026-05-15 --pool all
+python -m kline_qlib.download --start 2020-01-02 --end 2026-05-15 --pool all
 
 # 日K全量下载
 kline-download --start 2020-01-02 --end 2026-05-15 --pool all --full
@@ -717,7 +712,7 @@ kline-download --start 2020-01-02 --end 2026-05-15 --pool all --qlib-data-dir /p
 ### Python API
 
 ```python
-from kline_fetcher.download import load_stock_pool, download_day_kline, download_min_kline
+from kline_qlib.download import load_stock_pool, download_day_kline, download_min_kline  # 兼容壳 kline_fetcher.download 仍可用
 
 # 加载股池
 stocks = load_stock_pool("csi300")
@@ -741,12 +736,12 @@ status = download_day_kline("2020-01-02", "2026-05-15", "all", qlib_data_dir="/p
 **安装与启动**：
 
 ```bash
-pip install 'kline-fetcher[server]'   # 安装 fastapi + uvicorn 可选依赖
+pip install 'kline-qlib[server]'      # 安装 fastapi + uvicorn 可选依赖
 
 export KLINE_API_BASE_URL=...         # 数据获取类端点需要
 kline-server                          # 默认 http://127.0.0.1:8000/docs
 kline-server --port 9000              # 自定义端口
-uvicorn kline_fetcher.server:app      # 等效启动方式
+uvicorn kline_qlib.server:app         # 等效启动方式（兼容壳 kline_fetcher.server 仍可用）
 ```
 
 **页面**：`/docs`（Swagger UI，可交互测试）、`/redoc`（接口文档）。端点按模块分组：
@@ -806,7 +801,8 @@ uvicorn kline_fetcher.server:app      # 等效启动方式
 ### 场景1：获取单只股票日 K 并写入 qlib
 
 ```python
-from kline_fetcher import KLineFetcher, KLineToQlib
+from tzt_api import KLineFetcher
+from kline_qlib import KLineToQlib
 
 fetcher = KLineFetcher()
 converter = KLineToQlib()
@@ -820,7 +816,8 @@ if data:
 ### 场景2：获取高频数据并写入 qlib
 
 ```python
-from kline_fetcher import MinKLineFetcher, KLineToQlib
+from tzt_api import MinKLineFetcher
+from kline_qlib import KLineToQlib
 
 fetcher = MinKLineFetcher()
 converter = KLineToQlib()
@@ -835,7 +832,7 @@ if data:
 ### 场景3：增量更新检查
 
 ```python
-from kline_fetcher import KLineToQlib
+from kline_qlib import KLineToQlib
 
 converter = KLineToQlib()
 
@@ -851,7 +848,7 @@ if missing:
 ### 场景4：批量下载
 
 ```python
-from kline_fetcher.download import download_day_kline, download_min_kline
+from kline_qlib.download import download_day_kline, download_min_kline
 
 status = download_day_kline("2020-01-02", "2026-05-15", "all", incremental=True)
 downloaded = sum(1 for v in status.values() if v == "downloaded")
@@ -864,7 +861,8 @@ status = download_min_kline("2026-01-02", "2026-05-15", "all", freq="5min")
 ### 场景5：自定义数据目录
 
 ```python
-from kline_fetcher import KLineFetcher, KLineToQlib
+from tzt_api import KLineFetcher
+from kline_qlib import KLineToQlib
 
 # 自定义配置文件
 fetcher = KLineFetcher(config_path="/path/to/my_config.yaml")
@@ -922,14 +920,15 @@ pytest -m integration       # 显式启用集成测试
 
 ### v2.1.0 拆分兼容
 
-v2.1.0 将原 `fetcher.py`（单文件单类）拆分为 `_base.py` / `min_kline.py` / `concept_plate.py`。旧导入路径仍可用（`fetcher.py` 为兼容垫片）：
+v2.1.0 将原 `fetcher.py`（单文件单类）拆分为 `_base.py` / `min_kline.py` / `concept_plate.py`；v3.1.0 起进一步拆为 monorepo 双包（`tzt-api` + `kline-qlib`），旧导入路径经 `compat-kline-fetcher` 兼容壳仍可用（deprecated，迁移完成后撤）：
 
 ```python
-# 旧方式（v2.1.0 前的代码，仍然有效）
+# 旧方式（兼容壳路径，仍可用）
 from kline_fetcher.fetcher import KLineFetcher
 
-# 新方式（v2.1.0+ 推荐，按需导入）
-from kline_fetcher import KLineFetcher, MinKLineFetcher, ConceptPlateFetcher
+# 新方式（v3.1.0+ 推荐，按包导入）
+from tzt_api import KLineFetcher, MinKLineFetcher, ConceptPlateFetcher
+from kline_qlib import KLineToQlib
 ```
 
 **唯一破坏**：`KLineFetcher` 基类不再直接含分钟K/概念板块方法，需改用对应子类：
@@ -950,7 +949,7 @@ from kline_fetcher import KLineFetcher, MinKLineFetcher, ConceptPlateFetcher
 | 复权方式 | 前复权/后复权可选 | 前复权（cqtype=1） |
 | 高频分页 | 不支持 | locator 自动翻页 |
 | 大范围日K | 支持 | 分段下载（每段 ≤1500 条） |
-| 安装方式 | 项目内模块 | pip install -e . |
+| 安装方式 | 项目内模块 | pip install -e ./tzt-api -e ./kline-qlib |
 
 ---
 
@@ -962,4 +961,4 @@ from kline_fetcher import KLineFetcher, MinKLineFetcher, ConceptPlateFetcher
 | `fetch_day_kline` 返回 None | 日期范围 >1500 条 | 使用分段下载或 `download_day_kline` |
 | `min_kline_to_qlib` 返回 False | 缺少日历文件 | 先生成 `qlib_data/calendars/{freq}.txt` |
 | 北交所 920xxx 股票目录错误 | 旧版未支持 920 前缀 | 已修复，920 映射为 bj + market=103 |
-| `ModuleNotFoundError: No module named 'kline_fetcher'` | 未安装包 | `pip install -e /root/Projects/0.qlib_pro/data_v2` |
+| `ModuleNotFoundError: No module named 'kline_fetcher'` | 未安装兼容壳 | `pip install -e ./compat-kline-fetcher`（或新代码改用 `tzt_api`/`kline_qlib`） |

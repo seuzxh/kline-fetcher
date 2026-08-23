@@ -5,7 +5,8 @@
 ## 场景1：获取单只股票日 K 并写入 qlib
 
 ```python
-from kline_fetcher import KLineFetcher, KLineToQlib
+from tzt_api import KLineFetcher
+from kline_qlib import KLineToQlib
 
 fetcher = KLineFetcher()
 converter = KLineToQlib()
@@ -19,7 +20,8 @@ if data:
 ## 场景2：获取高频数据并写入 qlib
 
 ```python
-from kline_fetcher import MinKLineFetcher, KLineToQlib
+from tzt_api import MinKLineFetcher
+from kline_qlib import KLineToQlib
 
 fetcher = MinKLineFetcher()
 converter = KLineToQlib()
@@ -34,7 +36,7 @@ if data:
 ## 场景3：增量更新检查
 
 ```python
-from kline_fetcher import KLineToQlib
+from kline_qlib import KLineToQlib
 
 converter = KLineToQlib()
 
@@ -50,7 +52,7 @@ if missing:
 ## 场景4：批量下载
 
 ```python
-from kline_fetcher.download import download_day_kline, download_min_kline
+from kline_qlib.download import download_day_kline, download_min_kline
 
 status = download_day_kline("2020-01-02", "2026-05-15", "all", incremental=True)
 downloaded = sum(1 for v in status.values() if v == "downloaded")
@@ -65,7 +67,8 @@ status = download_min_kline("2026-01-02", "2026-05-15", "all", freq="5min")
 ## 场景5：自定义数据目录
 
 ```python
-from kline_fetcher import KLineFetcher, KLineToQlib
+from tzt_api import KLineFetcher
+from kline_qlib import KLineToQlib
 
 # 自定义配置文件
 fetcher = KLineFetcher(config_path="/path/to/my_config.yaml")

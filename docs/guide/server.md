@@ -5,12 +5,12 @@
 ## 安装与启动
 
 ```bash
-pip install 'kline-fetcher[server]'   # 安装 fastapi + uvicorn 可选依赖
+pip install 'kline-qlib[server]'      # 安装 fastapi + uvicorn 可选依赖
 
 export KLINE_API_BASE_URL=...         # 数据获取类端点需要
 kline-server                          # 默认 http://127.0.0.1:8000/docs
 kline-server --port 9000              # 自定义端口
-uvicorn kline_fetcher.server:app      # 等效启动方式
+uvicorn kline_qlib.server:app         # 等效启动方式（兼容壳 kline_fetcher.server 仍可用）
 ```
 
 ## 页面

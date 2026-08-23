@@ -8,8 +8,8 @@
 # 使用 pip 安装后的命令行工具
 kline-download --start 2020-01-02 --end 2026-05-15 --pool all
 
-# 或通过 Python 模块运行
-python -m kline_fetcher.download --start 2020-01-02 --end 2026-05-15 --pool all
+# 或通过 Python 模块运行（kline-qlib 包内）
+python -m kline_qlib.download --start 2020-01-02 --end 2026-05-15 --pool all
 
 # 日K全量下载
 kline-download --start 2020-01-02 --end 2026-05-15 --pool all --full
@@ -36,7 +36,9 @@ kline-download --start 2020-01-02 --end 2026-05-15 --pool all --qlib-data-dir /p
 ## Python API
 
 ```python
-from kline_fetcher.download import load_stock_pool, download_day_kline, download_min_kline
+from kline_qlib.download import load_stock_pool, download_day_kline, download_min_kline
+
+# 兼容壳路径仍可用（deprecated）：from kline_fetcher.download import ...
 
 # 加载股池
 stocks = load_stock_pool("csi300")

@@ -2,7 +2,7 @@
 
 ## 项目概述
 
-kline-fetcher 是一个 A 股 K 线数据获取与 Qlib 格式转换工具（v3.0.1）。它从中焯行情 API 获取股票行情数据，转换为 Qlib 标准的 `.bin` 格式，供量化回测框架使用。
+kline-fetcher 仓库（v3.1.0 起 monorepo 双包）是 A 股行情数据获取与 Qlib 格式转换工具集：`tzt-api`（行情请求）+ `kline-qlib`（qlib 写入）+ `compat-kline-fetcher`（旧包名兼容壳）。它从中焯行情 API 获取股票行情数据，转换为 Qlib 标准的 `.bin` 格式，供量化回测框架使用。
 
 ## 中焯官方接口文档（智能体必读）
 
@@ -13,20 +13,26 @@ kline-fetcher 是一个 A 股 K 线数据获取与 Qlib 格式转换工具（v3.
 ## 架构
 
 ```
-kline_fetcher/
-├── __init__.py          # 包入口，导出 KLineFetcher, MinKLineFetcher, ConceptPlateFetcher, TrendFetcher, KLineToQlib, AdjustType
-├── _base.py             # KLineFetcher 基类：共享底座（请求/参数/解析/单位换算）+ 日K方法
-├── min_kline.py         # MinKLineFetcher(KLineFetcher)：分钟K线方法
-├── concept_plate.py     # ConceptPlateFetcher(KLineFetcher)：概念板块方法
-├── trend.py             # TrendFetcher(KLineFetcher)：分时数据（集合竞价+盘中）
-├── fetcher.py           # 兼容垫片（v2.1.0 前的单文件实现已拆分，保留旧导入路径）
-├── converter.py         # 转换层：K线数据 → qlib bin 格式
-├── download.py          # 批量下载入口 + CLI
-└── config/
-    └── kline_config.yaml # 默认配置
+monorepo（v3.1.0 拆分）：
+tzt-api/                  ← 包①：纯行情请求（零 numpy）
+├── pyproject.toml        #   name: tzt-api；deps: requests, PyYAML
+└── tzt_api/
+    ├── __init__.py       #   导出 KLineFetcher, MinKLineFetcher, ConceptPlateFetcher, TrendFetcher, AdjustType
+    ├── market.py         #   市场规则单一事实源（INDEX_CODE_MAP/infer_market 等，两包共享）
+    ├── _base.py          #   KLineFetcher 基类：共享底座 + 日K方法
+    ├── min_kline.py / concept_plate.py / trend.py
+    └── config/kline_config.yaml
+kline-qlib/               ← 包②：qlib 写入（依赖 tzt-api，单向）
+├── pyproject.toml        #   name: kline-qlib；CLI: kline-download / kline-server
+└── kline_qlib/
+    ├── converter.py      #   KLineToQlib：K线 → qlib bin
+    ├── download.py       #   批量下载编排 + CLI
+    └── server.py         #   kline-server 调试服务
+compat-kline-fetcher/     ← 旧 kline-fetcher 兼容壳（3.1.0 终版，纯转发，deprecated）
+└── kline_fetcher/        #   __init__ / fetcher / converter / download / server 垫片
 ```
 
-数据流：`API → _base.py/min_kline.py/concept_plate.py/trend.py (获取+单位转换) → download.py (批量调度) → converter.py (对齐日历+写入bin)`
+数据流：`API → tzt_api（获取+单位转换）→ kline_qlib.download（批量调度）→ kline_qlib.converter（对齐日历+写入bin）`
 
 **类继承结构**（v2.1.0）：
 ```
@@ -97,7 +103,7 @@ fetcher.fetch_day_kline("sh000300")                  # ✅ 沪深300（前缀，
 **其他注意**：
 - 指数无复权概念，`adjust` 参数对指数无意义（传 `"none"` 或默认均可，实测不影响返回）
 - 指数写入 qlib 时目录按推断市场命名：`sh000300`（沪深300）、`sz399006`（创业板指）
-- 新增指数支持：向 `_base.py` 的 `INDEX_CODE_MAP` 添加 `{代码: (名称, market)}` 即可，`infer_market` / `code_to_qlib_dir` / `is_index` 自动生效
+- 新增指数支持：向 `tzt-api/tzt_api/market.py` 的 `INDEX_CODE_MAP` 添加 `{代码: (名称, market)}`，`infer_market` / `code_to_qlib_dir` / `is_index` 自动生效
 
 ### MinKLineFetcher (min_kline.py) — 分钟K线
 
@@ -183,11 +189,13 @@ fetcher.fetch_day_kline("sh000300")                  # ✅ 沪深300（前缀，
 ### 导入方式
 
 ```python
-# 推荐（v2.1.0+）：按需从包入口导入
-from kline_fetcher import KLineFetcher, MinKLineFetcher, ConceptPlateFetcher, TrendFetcher
+# 推荐：按包导入
+from tzt_api import KLineFetcher, MinKLineFetcher, ConceptPlateFetcher, TrendFetcher
+from kline_qlib import KLineToQlib, download_day_kline, download_min_kline, load_stock_pool
 
-# 兼容（v2.1.0 前）：旧路径仍可用，fetcher.py 为兼容垫片
-from kline_fetcher.fetcher import KLineFetcher  # 仅基类（日K方法）
+# 旧路径（compat-kline-fetcher 兼容壳，deprecated，迁移完成后撤）
+from kline_fetcher import KLineFetcher, KLineToQlib          # 仍可用
+from kline_fetcher.fetcher import KLineFetcher, MARKET_CODE_MAP  # 仍可用
 ```
 
 **复权参数 adjust**：`"qfq"` (前复权=1), `"hfq"` (后复权=2), `"none"` (不复权=0), `None` (使用配置默认值，当前为后复权)
@@ -387,5 +395,6 @@ qlib_fields:                             # 写入 qlib 的字段列表
 
 关键破坏性变更速记：
 
+- **v3.1.0（拆分）**：monorepo 双包——tzt-api（行情请求）+ kline-qlib（qlib 写入）+ kline-fetcher 兼容壳；市场规则收敛 tzt_api.market 单一事实源
 - **v3.0.0**：架构拆分——单文件 `fetcher.py` 拆分为 `_base/min_kline/concept_plate` 继承体系，概念板块/分钟K方法移入子类（旧导入路径保留兼容垫片）
 - **v2.0.0**：默认后复权存储 + `factor` 字段（还原原始价：`后复权价/factor`），已有数据需全量替换

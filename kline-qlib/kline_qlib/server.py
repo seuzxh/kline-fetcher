@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""kline-fetcher 在线调试服务：FastAPI 薄包装，自带 Swagger UI。
+"""kline-qlib 在线调试服务：FastAPI 薄包装，自带 Swagger UI。
 
 把各 Fetcher 的获取方法与 KLineToQlib 的本地查询方法映射为 REST 端点，
 浏览器打开 /docs 即可填参数在线测试（Swagger UI），也可用 /redoc 看文档。
@@ -39,7 +39,7 @@ from tzt_api import (
 from kline_qlib import KLineToQlib, __version__
 
 app = FastAPI(
-    title="kline-fetcher 在线调试服务",
+    title="kline-qlib 在线调试服务",
     description=(
         "中焯行情 API 客户端的在线测试页。每个端点对应一个 Fetcher 方法，"
         "参数与 Python API 一致。失败时返回 502，原因见服务端日志；"
@@ -269,7 +269,7 @@ def root():
 
 
 def main():
-    parser = argparse.ArgumentParser(description="kline-fetcher 在线调试服务（Swagger UI）")
+    parser = argparse.ArgumentParser(description="kline-qlib 在线调试服务（Swagger UI）")
     parser.add_argument("--host", default="127.0.0.1", help="监听地址（默认 127.0.0.1；无鉴权，勿暴露公网）")
     parser.add_argument("--port", type=int, default=8000, help="监听端口（默认 8000）")
     parser.add_argument("--reload", action="store_true", help="开发模式：代码变更自动重启")
