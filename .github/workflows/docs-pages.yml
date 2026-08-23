@@ -32,10 +32,12 @@ jobs:
         with:
           python-version: '3.12'
 
-      # 首次运行自动启用 Pages（Build and deployment → Source: GitHub Actions）
+      # 尝试自动启用 Pages（GITHUB_TOKEN 无权创建站点时静默跳过，
+      # 需手动开启一次：Settings → Pages → Source: GitHub Actions）
       - uses: actions/configure-pages@v5
         with:
           enablement: true
+        continue-on-error: true
 
       - name: 安装构建依赖
         run: pip install mkdocs-material
