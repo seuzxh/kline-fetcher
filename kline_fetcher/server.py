@@ -227,12 +227,13 @@ def get_concept_plate_stocks(
     )
 
 
-@app.get("/api/concept/stock-plates", tags=["概念板块"], summary="获取股票所属板块 get_stock_concept_plates（实测恒为空）")
+@app.get("/api/concept/stock-plates", tags=["概念板块"], summary="获取股票所属板块 get_stock_concept_plates（属性 900/901/923）")
 def get_stock_concept_plates(
     code: str = Query(..., description="股票代码，如 600519"),
-    market: int = Query(..., description="市场：1=沪 0=深 103=北（必填）"),
+    market: Optional[int] = Query(None, description="市场：1=沪 0=深 103=北（可选，默认自动推断）"),
+    plate_type: Optional[str] = Query(None, description="板块类型过滤：concept/industry/region（可选，默认全部）"),
 ):
-    return _or_502(plate_fetcher().get_stock_concept_plates(code, market), f"获取 {code} 所属板块")
+    return _or_502(plate_fetcher().get_stock_concept_plates(code, market, plate_type=plate_type), f"获取 {code} 所属板块")
 
 
 # ===== 端点：本地数据查询（KLineToQlib，只读） =====

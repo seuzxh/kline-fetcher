@@ -160,38 +160,49 @@ class TestConceptPlates(unittest.TestCase):
 
     def test_04_get_stock_concept_plates(self):
         """
-        测试 get_stock_concept_plates 方法
+        测试 get_stock_concept_plates 方法（v2.1.2 重写：基于官方属性 901 CoBlkIdx）
         验证：
-        1. 返回值不为 None
-        2. 返回值是列表类型
-        3. 如果有数据，每个板块包含必填字段
+        1. 返回值不为 None 且是非空列表
+        2. 每个板块包含必填字段（code, name, market, type）
+        3. plate_type 过滤生效
         """
         logger.info(f"测试获取股票 {self.test_stock_code} 所属的概念板块")
-        
+
         # 调用方法
         plates = self.fetcher.get_stock_concept_plates(
             self.test_stock_code,
             self.test_stock_market
         )
-        
+
         # 验证返回值不为 None
         self.assertIsNotNone(plates, "获取股票所属概念板块失败，返回 None")
-        
-        # 验证返回值是列表类型
+
+        # 验证返回值是列表类型且非空（贵州茅台必有所属板块）
         self.assertIsInstance(plates, list, "返回值不是列表类型")
-        
-        # 如果有数据，验证每个板块包含必填字段
-        if len(plates) > 0:
-            required_fields = ["code"]
-            for i, plate in enumerate(plates[:5]):  # 只检查前5个板块
-                with self.subTest(plate_index=i):
-                    for field in required_fields:
-                        self.assertIn(field, plate, f"板块缺少必填字段: {field}")
-                        self.assertIsNotNone(plate[field], f"字段 {field} 的值为 None")
-        
-        logger.info(f"成功获取 {len(plates)} 个概念板块")
-        if len(plates) > 0:
-            logger.info(f"第一个板块: {plates[0]}")
+        self.assertGreater(len(plates), 0, "板块列表为空")
+
+        # 验证每个板块包含必填字段
+        required_fields = ["code", "name", "market", "type"]
+        for i, plate in enumerate(plates[:5]):  # 只检查前5个板块
+            with self.subTest(plate_index=i):
+                for field in required_fields:
+                    self.assertIn(field, plate, f"板块缺少必填字段: {field}")
+                    self.assertIsNotNone(plate[field], f"字段 {field} 的值为 None")
+                self.assertIn(plate["type"], ("industry", "region", "concept"))
+
+        # 验证 plate_type 过滤
+        concepts = self.fetcher.get_stock_concept_plates(
+            self.test_stock_code,
+            self.test_stock_market,
+            plate_type="concept"
+        )
+        self.assertIsNotNone(concepts)
+        self.assertGreater(len(concepts), 0, "概念板块过滤结果为空")
+        for plate in concepts:
+            self.assertEqual(plate["type"], "concept")
+
+        logger.info(f"成功获取 {len(plates)} 个板块（其中概念 {len(concepts)} 个）")
+        logger.info(f"前几个板块: {plates[:3]}")
 
     def test_05_get_concept_plate_kline_custom_count(self):
         """

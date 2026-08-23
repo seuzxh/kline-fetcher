@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### 🐛 Bug 修复
+
+- **`get_stock_concept_plates` 修复为可用**：旧实现复刻 iOS 抓包参数（10000 号请求 + 行情类 props），实测恒返回 `[]`。依据官方《行情3.0股票属性ID》改用**关联属性 `900|901|923`**（CoIndBlkIdx=行业 / CoBlkIdx=全部隶属板块 / RegionBlkIdx=地域）+ `{propID}.props=0|1|2`，一次请求返回全部所属板块，并按 900/923 交叉标注 `type`（industry/region/concept）。实测 688802/600519/sz000001 均正常（19~22 个板块）。签名变化：`market` 改为可选（自动推断），新增 `plate_type` 过滤参数（`"concept"/"industry"/"region"`）；kline-server 对应端点同步开放 `market`/`plate_type` 可选参数
+
 ### ✨ 新功能
 
 - **kline-server 在线调试服务**（`server.py`）：FastAPI 薄包装，13 个只读 REST 端点（日K/分钟K/分时/概念板块/本地覆盖查询），`/docs` Swagger UI 浏览器在线测试。可选依赖 `pip install 'kline-fetcher[server]'`；NaN 序列化为 null，失败返回 502

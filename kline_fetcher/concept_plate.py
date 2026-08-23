@@ -195,59 +195,103 @@ class ConceptPlateFetcher(KLineFetcher):
         self.logger.info(f"Fetched {len(stocks)} stocks for plate {plate_code}")
         return stocks
 
-    def get_stock_concept_plates(self, code: str, market: int) -> Optional[List[Dict]]:
-        """获取指定股票所属的概念板块列表。
+    # 股票所属板块的关联属性 ID（《行情3.0股票属性ID》v1.229）：
+    #   900 = CoIndBlkIdx 隶属行业板块指数（仅 1 条）
+    #   901 = CoBlkIdx 隶属版块指数（含行业/概念/地域/风格，可多条）
+    #   923 = RegionBlkIdx 地域板块
+    # 关联属性（val_type=8）须配 {propID}.props 指定关联证券的出参属性：0=代码 1=市场 2=名称
+    STOCK_PLATE_PROPS = "900|901|923"
+    PLATE_RESPONSE_KEYS = {
+        "900": "CoIndBlkIdx",
+        "901": "CoBlkIdx",
+        "923": "RegionBlkIdx",
+    }
+
+    @staticmethod
+    def _parse_plate_group(raw: Dict, key: str) -> List[Dict]:
+        """解析 10000 响应中单个板块属性的关联证券列表。
+
+        响应结构（outtype=1）: {key: [{"StockCode": [...], "StockName": [...], "MarketSN": [...]}]}
+        """
+        group = raw.get(key)
+        if not group or not isinstance(group, list) or len(group) == 0:
+            return []
+        inner = group[0]
+        if not isinstance(inner, dict):
+            return []
+
+        codes = inner.get("StockCode") or []
+        names = inner.get("StockName") or []
+        markets = inner.get("MarketSN") or []
+
+        plates = []
+        for i, plate_code in enumerate(codes):
+            plate = {"code": plate_code}
+            if i < len(names):
+                plate["name"] = names[i]
+            if i < len(markets):
+                plate["market"] = markets[i]
+            plates.append(plate)
+        return plates
+
+    def get_stock_concept_plates(self, code: str, market: Optional[int] = None, plate_type: Optional[str] = None) -> Optional[List[Dict]]:
+        """获取指定股票所属的板块列表（官方属性 901 CoBlkIdx，2026-08 实测可用）。
+
+        通过 Action=10000 请求关联属性 900（行业）/901（全部）/923（地域），
+        用 900/923 的结果给 901 的板块标注类型。
 
         参数:
-            code (str): 股票代码，例如 "600519"
-            market (int): 市场代码，0表示深圳，1表示上海，103表示北京
+            code (str): 股票代码，例如 "600519"。裸码按指数优先规则推断市场，
+                深市 000xxx 个股请用 "sz000001" 或显式传 market。
+            market (int, optional): 市场代码，0深圳 1上海 103北京。默认自动推断。
+            plate_type (str, optional): 板块类型过滤，可选 "industry"（行业）/
+                "region"（地域）/"concept"（概念及风格）。默认 None 返回全部并带 type 字段。
 
         返回值:
-            Optional[List[Dict]]: 概念板块列表，每个板块包含 code 及可选的 name。
-            请求失败返回 None。
+            Optional[List[Dict]]: 板块列表，每项 {"code", "name", "market", "type"}。
+            请求失败返回 None，无板块数据返回 []。
         """
-        kline_cfg = self.config.get("kline", {})
+        if market is None:
+            market = self.infer_market(code)
+        numeric_code = self._numeric_code(code)
+
         params = {
             "Action": 10000,
-            "codes": f"{code}|{market}",
+            "codes": f"{numeric_code}|{market}",
             "count": 1,
-            "groups": "HQ_StockInfo",
-            "props": "11|10|147|19|20|13|521|22|23|320|554|555|1034|553|1001|550|1040|552|1033|124|125|135|134|104|105|141|142|289|422|131|132|133|190|191|1039|1|",
+            "props": self.STOCK_PLATE_PROPS,
             "market": market,
-            "reqlinktype": 0,
-            "outtype": kline_cfg.get("outtype", 1),
+            "outtype": 1,
         }
+        for prop_id in self.STOCK_PLATE_PROPS.split("|"):
+            params[f"{prop_id}.props"] = "0|1|2"
 
         raw = self._request(params)
         if raw is None:
             return None
 
-        concept_plates = []
+        industry = self._parse_plate_group(raw, self.PLATE_RESPONSE_KEYS["900"])
+        region = self._parse_plate_group(raw, self.PLATE_RESPONSE_KEYS["923"])
+        all_plates = self._parse_plate_group(raw, self.PLATE_RESPONSE_KEYS["901"])
+        if not all_plates:
+            # CoBlkIdx 缺失时退化为行业+地域并集（正常沪深京股票不会走到这里）
+            all_plates = industry + region
 
-        # 策略1：查找包含 "Block" 或 "Concept" 关键词的字段
-        block_fields = []
-        for key in raw.keys():
-            if "Block" in key or "Concept" in key:
-                block_fields.append(key)
+        industry_codes = {p["code"] for p in industry}
+        region_codes = {p["code"] for p in region}
+        for plate in all_plates:
+            if plate["code"] in industry_codes:
+                plate["type"] = "industry"
+            elif plate["code"] in region_codes:
+                plate["type"] = "region"
+            else:
+                plate["type"] = "concept"
 
-        if block_fields:
-            code_field = block_fields[0]
-            if isinstance(raw[code_field], list):
-                for i, plate_code in enumerate(raw[code_field]):
-                    plate = {
-                        "code": plate_code
-                    }
-                    for name_field in block_fields:
-                        if name_field != code_field and isinstance(raw[name_field], list) and i < len(raw[name_field]):
-                            plate["name"] = raw[name_field][i]
-                    concept_plates.append(plate)
+        if plate_type is not None:
+            plate_type = plate_type.lower()
+            if plate_type not in ("industry", "region", "concept"):
+                raise ValueError(f"无效的 plate_type: {plate_type}，可选值: industry, region, concept")
+            all_plates = [p for p in all_plates if p["type"] == plate_type]
 
-        # 策略2：如果策略1没有找到数据，尝试解析 HQ_StockInfo 分组
-        if not concept_plates:
-            if "HQ_StockInfo" in raw and isinstance(raw["HQ_StockInfo"], list):
-                for item in raw["HQ_StockInfo"]:
-                    if isinstance(item, dict) and any("block" in k.lower() or "concept" in k.lower() for k in item.keys()):
-                        concept_plates.append(item)
-
-        self.logger.info(f"Fetched {len(concept_plates)} concept plates for stock {code}")
-        return concept_plates
+        self.logger.info(f"Fetched {len(all_plates)} plates for stock {code} (plate_type={plate_type})")
+        return all_plates

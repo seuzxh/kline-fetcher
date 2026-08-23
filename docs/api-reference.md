@@ -139,14 +139,14 @@ fetch_min_kline(code, freq="1min", count=None, market=None,
 
 - `get_all_concept_plates()` **只返回按涨幅排序的前 30 个**（总数约 390，取全量需按 `start` 翻页，示例见深度文档 1.4）；
 - `get_concept_plate_stocks()` 返回**首项是板块自身**（`block.include=1` 所致），成份股需过滤 `market != 44`；
-- `get_stock_concept_plates()` **实测不可用**：响应无板块字段，恒返回 `[]`；需要股票→板块映射请用「板块列表 + 成份股」反向构建。
+- `get_stock_concept_plates()` 基于**官方关联属性 900/901/923**（CoIndBlkIdx/CoBlkIdx/RegionBlkIdx），实测可用，返回带 `type` 标注（industry/region/concept）。
 
 | 方法 | 签名 | 返回 |
 |------|------|------|
 | `get_all_concept_plates` | `() -> Optional[List[Dict]]` | 概念板块（前 30）：`{code, name, market, price?, change?, change_pct?}`（行情字段为 API 原始整数格式） |
 | `get_concept_plate_kline` | `(plate_code, count=-220, market=44) -> Optional[List[Dict]]` | 板块日K（不复权 `cqType=0`），结构同股票日K |
 | `get_concept_plate_stocks` | `(plate_code, start=0, count=10) -> Optional[List[Dict]]` | 成份股分页（首项为板块自身）：`{code, name, market, price?, change?, change_pct?, high?, low?}` |
-| `get_stock_concept_plates` | `(code, market) -> Optional[List[Dict]]` | 股票所属板块（实测恒为 `[]`）；`market` 必填（0 深 / 1 沪 / 103 北） |
+| `get_stock_concept_plates` | `(code, market=None, plate_type=None) -> Optional[List[Dict]]` | 股票所属板块：`{code, name, market, type}`；`market` 自动推断，`plate_type` 可选 `"concept"/"industry"/"region"` 过滤 |
 
 ## TrendFetcher 分时数据
 
