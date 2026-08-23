@@ -35,6 +35,9 @@ markdown_extensions:
       # 文档内目录链接（如 #adjusttype-复权枚举）在站点和 GitHub 上都有效
       slugify: !!python/name:pymdownx.slugs.uslugify
 
+# superpowers/ 下的执行计划等工作文档不发布到站点（也不进 nav）
+exclude_docs: 'superpowers/**'
+
 nav:
   - 首页: index.md
   - 使用指南:
@@ -49,6 +52,7 @@ nav:
   - 深入了解:
       - 架构: architecture.md
       - 技术方案: design.md
+      - 重构计划: refactor-plan-monorepo-split.md
   - API 参考: api-reference.md
   - 概念板块接口: concept_plate_api.md
   - 附录:
