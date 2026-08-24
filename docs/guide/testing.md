@@ -2,13 +2,12 @@
 
 ## 测试
 
-项目测试随各包独立存放（`tzt-api/tests/`、`kline-qlib/tests/`、`compat-kline-fetcher/tests/`），分两类。
+项目测试随各包独立存放（`kline-qlib/tests/`、`compat-kline-fetcher/tests/`；行情客户端 tzt-api 的测试已随包迁至 [GXQuant](https://github.com/seuzxh/GXQuant) 仓库 `tests/`），分两类。
 
 ### 单元测试（默认运行，无需 API）
 
 ```bash
-cd tzt-api && pytest            # 行情请求包测试
-cd kline-qlib && pytest         # qlib 写入包测试
+cd kline-qlib && pytest            # qlib 写入包测试
 cd compat-kline-fetcher && pytest  # 兼容壳转发测试
 ```
 
@@ -16,20 +15,20 @@ cd compat-kline-fetcher && pytest  # 兼容壳转发测试
 |------|---------|
 | `test_append_bin.py` | `_append_bin` 增量合并逻辑（9 个场景，含 NaN 保护） |
 | `test_build_min_arrays.py` | `_build_min_arrays` 缺 time 字段处理（3 个） |
-| `test_factor_calc.py` | factor 数值正确性与脏数据置 NaN（10 个，mock 输入） |
 | `test_calendar_generation.py` | 日历边界 11:30/15:00（13 个） |
-| `test_structure.py` | 包结构/导入路径/方法归属/静态方法（18+ 个） |
+| `test_structure_qlib.py` / `test_cross_consistency.py` | 包结构、市场推断跨包一致性 |
 | `test_server.py` | 在线调试服务（9 个，mock 上游） |
+| `test_compat.py`（compat 包） | 兼容壳全路径转发同一性 |
 
 ### 集成测试（需真实 API，默认跳过）
 
-```bash
-# 需先配置 API 地址
-export KLINE_API_BASE_URL=http://<your-api-host>:<port>
-cd tzt-api && pytest -m integration       # 显式启用集成测试（行情类）
-```
+集成测试（行情类）已随 tzt-api 迁至 GXQuant 仓库：
 
-- `test_split_interfaces.py`：三类 fetcher 端到端验证（覆盖各复权方式、5 种频率、错误输入、字段完整性、继承关系等）
+```bash
+git clone https://github.com/seuzxh/GXQuant.git && cd GXQuant
+export KLINE_API_BASE_URL=http://<your-api-host>:<port>
+pytest -m integration       # 显式启用集成测试
+```
 - `test_concept_plates.py`：概念板块 4 个方法
 - `test_indices_integration.py`：指数行情（26 个白名单防回归）
 - `test_trend_*.py`：分时数据
@@ -65,4 +64,4 @@ from tzt_api import KLineFetcher, MinKLineFetcher, ConceptPlateFetcher
 | 复权方式 | 前复权/后复权可选 | 后复权（cqtype=2，v2.0.0 起）+ factor 字段 |
 | 高频分页 | 不支持 | locator 自动翻页 |
 | 大范围日K | 支持 | 分段下载（每段 ≤1500 条） |
-| 安装方式 | 项目内模块 | `pip install -e ./tzt-api -e ./kline-qlib` |
+| 安装方式 | 项目内模块 | `pip install`（GXQuant + 本仓 kline-qlib） |

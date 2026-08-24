@@ -4,17 +4,18 @@
 
 ## 模块概述
 
-本仓库（v3.1.0 起 monorepo 双包）基于中焯行情 API 获取 A 股 K 线数据，并转换为 qlib bin 格式存储。无需 Token 认证，支持 `pip install` 安装。
+本仓库是 A 股行情 → qlib bin 格式的数据管道，基于中焯行情 API（客户端为独立仓库 [GXQuant](https://github.com/seuzxh/GXQuant) 的 `tzt-api` 包）。无需 Token 认证，支持 `pip install` 安装。
 
-- `tzt-api`：纯行情请求包（零 numpy）
-- `kline-qlib`：qlib 写入包（依赖 tzt-api，CLI `kline-download` / `kline-server`）
+- `kline-qlib`：qlib 写入包（依赖 `tzt-api`，CLI `kline-download` / `kline-server`）
 - `compat-kline-fetcher`：旧包名 `kline-fetcher` 兼容壳（纯转发，deprecated，迁移完成后撤）
+- 外部依赖：`tzt-api` 行情客户端（[GXQuant 仓库](https://github.com/seuzxh/GXQuant)，`import tzt_api`）
 
 **安装**：
 
 ```bash
-pip install -e ./tzt-api -e ./kline-qlib   # 双包安装
-pip install -e ./compat-kline-fetcher      # 可选：旧包名兼容壳
+pip install git+https://github.com/seuzxh/GXQuant.git   # 先装行情客户端 tzt-api
+pip install -e ./kline-qlib                             # 再装 qlib 写入包
+pip install -e ./compat-kline-fetcher                   # 可选：旧包名兼容壳
 ```
 
 **快速开始**：
@@ -54,24 +55,15 @@ min_data = min_fetcher.fetch_min_kline("600519", freq="5min", count=10)
 | [docs/architecture.md](docs/architecture.md) | 架构文档：模块划分、类继承结构、数据流、存储布局 |
 | [docs/design.md](docs/design.md) | 技术方案：复权与 factor、bin 格式、增量追加、日历对齐等设计决策 |
 | [docs/api-reference.md](docs/api-reference.md) | API 参考：全部公开类/方法/参数/返回值 |
-| [docs/concept_plate_api.md](docs/concept_plate_api.md) | 概念板块接口深度文档（实测响应结构、分页、已知限制） |
+| [GXQuant docs/concept_plate_api.md](https://github.com/seuzxh/GXQuant/blob/master/docs/concept_plate_api.md) | 概念板块接口深度文档（随 tzt-api 迁至 GXQuant） |
 | [docs/CHANGELOG.md](docs/CHANGELOG.md) | 版本变更记录 |
 | [docs/REVIEW_ISSUES.md](docs/REVIEW_ISSUES.md) | code review 待办跟踪 |
 
 ## 目录结构
 
 ```
-monorepo（v3.1.0 拆分）：
-tzt-api/                  ← 包①：纯行情请求（零 numpy）
-├── pyproject.toml        #   name: tzt-api；deps: requests, PyYAML
-├── tests/                #   行情请求包测试
-└── tzt_api/
-    ├── __init__.py       #   导出 KLineFetcher, MinKLineFetcher, ConceptPlateFetcher, TrendFetcher, AdjustType
-    ├── market.py         #   市场规则单一事实源（INDEX_CODE_MAP/infer_market 等，两包共享）
-    ├── _base.py          #   KLineFetcher 基类：共享底座 + 日K方法
-    ├── min_kline.py / concept_plate.py / trend.py
-    └── config/kline_config.yaml
-kline-qlib/               ← 包②：qlib 写入（依赖 tzt-api，单向）
+本仓（tzt-api 迁出后）：
+kline-qlib/               ← qlib 写入包（依赖外部 tzt-api）
 ├── pyproject.toml        #   name: kline-qlib；CLI: kline-download / kline-server
 ├── tests/                #   qlib 写入包测试
 └── kline_qlib/
@@ -82,13 +74,16 @@ compat-kline-fetcher/     ← 旧 kline-fetcher 兼容壳（3.1.0 终版，纯�
 ├── tests/                #   兼容壳转发测试
 └── kline_fetcher/        #   __init__ / fetcher / converter / download / server + 子模块垫片
 docs/                     # 项目文档（architecture/design/api-reference/CHANGELOG 等）
+
+外部依赖 tzt-api（行情客户端，含 market.py 市场规则单一事实源）位于独立仓库：
+https://github.com/seuzxh/GXQuant
 ```
 
 ## 配置
 
 ### 配置文件
 
-包内默认配置：`tzt-api/tzt_api/config/kline_config.yaml`
+包内默认配置：GXQuant 仓库 `tzt_api/config/kline_config.yaml`（随 tzt-api 包安装）
 
 项目级配置（优先）：`/root/Projects/0.qlib_pro/config/kline_config.yaml`
 
@@ -892,29 +887,25 @@ df = D.features(["SH600519"], ["$close"], start_time="2026-05-08", end_time="202
 ### 单元测试（默认运行，无需 API）
 
 ```bash
-cd tzt-api && pytest               # 行情请求包测试
 cd kline-qlib && pytest            # qlib 写入包测试
 cd compat-kline-fetcher && pytest  # 兼容壳转发测试
 ```
 
 - `test_append_bin.py`：`_append_bin` 增量合并逻辑（9 个场景，含 NaN 保护）
 - `test_build_min_arrays.py`：`_build_min_arrays` 缺 time 字段处理（3 个）
-- `test_factor_calc.py`：factor 数值正确性（6 个，mock 输入）
 - `test_calendar_generation.py`：日历边界 11:30/15:00（13 个）
-- `test_structure.py`：包结构/导入路径/方法归属/静态方法（18 个）
+- `test_structure_qlib.py` / `test_cross_consistency.py`：包结构与市场推断跨包一致性
+- 行情客户端（tzt-api）的单元测试已随包迁至 [GXQuant](https://github.com/seuzxh/GXQuant) 仓库 `tests/`
 
 ### 集成测试（需真实 API，默认跳过）
 
+集成测试（行情类：`test_split_interfaces.py` / `test_concept_plates.py` / `test_indices_integration.py` / `test_trend_integration.py`）已随 tzt-api 迁至 GXQuant 仓库：
+
 ```bash
-# 需先配置 API 地址
+git clone https://github.com/seuzxh/GXQuant.git && cd GXQuant
 export KLINE_API_BASE_URL=http://<your-api-host>:<port>
-cd tzt-api && pytest -m integration       # 显式启用集成测试（行情类）
+pytest -m integration
 ```
-
-- `test_split_interfaces.py`：三类（KLineFetcher/MinKLineFetcher/ConceptPlateFetcher）端到端验证（34 项，覆盖各复权方式、5 种频率、错误输入、字段完整性、继承关系等）
-- `test_concept_plates.py`：概念板块 4 个方法（unittest 风格，8 项 + 15 subtests）
-
-集成测试通过 `integration` marker 标记，默认 `addopts="-m 'not integration'"` 确保无 API 环境下 CI 不失败。
 
 ---
 
@@ -951,7 +942,7 @@ from kline_qlib import KLineToQlib
 | 复权方式 | 前复权/后复权可选 | 后复权（cqtype=2，附 factor，详见 docs/guide/faq.md） |
 | 高频分页 | 不支持 | locator 自动翻页 |
 | 大范围日K | 支持 | 分段下载（每段 ≤1500 条） |
-| 安装方式 | 项目内模块 | pip install -e ./tzt-api -e ./kline-qlib |
+| 安装方式 | 项目内模块 | pip install（GXQuant + 本仓 kline-qlib） |
 
 ---
 

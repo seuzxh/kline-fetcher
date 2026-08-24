@@ -1,18 +1,21 @@
 # kline-fetcher 架构文档
 
-> 适用版本：v3.1.0（monorepo 双包）。本文档描述项目的整体架构、模块划分与数据流。
+> 适用版本：v3.1.0+（tzt-api 已迁出为独立仓库 [GXQuant](https://github.com/seuzxh/GXQuant)，本仓为 kline-qlib + 兼容壳）。本文档描述项目的整体架构、模块划分与数据流。
 > 接口签名与参数明细见 [api-reference.md](api-reference.md)，实现层面的设计决策见 [design.md](design.md)。
 
 ## 1. 项目定位
 
-kline-fetcher 仓库是 **A 股行情数据获取与 Qlib 格式转换工具集**（v3.1.0 起拆为 `tzt-api` + `kline-qlib` 双包，旧包名经兼容壳可用），定位为量化回测框架（Qlib）的数据管道上游：
+kline-fetcher 仓库是 **A 股行情数据获取与 Qlib 格式转换工具集**（行情客户端 tzt-api 已迁至独立仓库 [GXQuant](https://github.com/seuzxh/GXQuant)，本仓保留 kline-qlib + 兼容壳），定位为量化回测框架（Qlib）的数据管道：
 
 ```
 中焯行情 API（第三方数据源）
         │
         ▼
-  本仓库（monorepo）
-  ├─ tzt-api（获取层）：抓取日K/分钟K/分时/概念板块数据并统一单位
+  GXQuant 仓库（外部依赖，pip 安装 tzt-api）
+  └─ tzt-api（获取层）：抓取日K/分钟K/分时/概念板块数据并统一单位
+        │
+        ▼
+  本仓库
   ├─ kline-qlib（调度+转换层）：按股池批量下载、增量判断、对齐交易日历写入 qlib bin
   └─ compat-kline-fetcher（兼容壳）：旧包名 kline-fetcher 纯转发，deprecated
         │
@@ -33,16 +36,8 @@ kline-fetcher 仓库是 **A 股行情数据获取与 Qlib 格式转换工具集*
 ## 2. 模块划分
 
 ```
-monorepo（v3.1.0 拆分）：
-tzt-api/                  ← 包①：纯行情请求（零 numpy）
-├── pyproject.toml        #   name: tzt-api；deps: requests, PyYAML
-└── tzt_api/
-    ├── __init__.py       #   导出 KLineFetcher, MinKLineFetcher, ConceptPlateFetcher, TrendFetcher, AdjustType
-    ├── market.py         #   市场规则单一事实源（INDEX_CODE_MAP/infer_market 等，两包共享）
-    ├── _base.py          #   KLineFetcher 基类：共享底座 + 日K方法
-    ├── min_kline.py / concept_plate.py / trend.py
-    └── config/kline_config.yaml
-kline-qlib/               ← 包②：qlib 写入（依赖 tzt-api，单向）
+本仓（tzt-api 迁出后）：
+kline-qlib/               ← qlib 写入包（依赖外部 tzt-api）
 ├── pyproject.toml        #   name: kline-qlib；CLI: kline-download / kline-server
 └── kline_qlib/
     ├── converter.py      #   KLineToQlib：K线 → qlib bin
@@ -50,9 +45,12 @@ kline-qlib/               ← 包②：qlib 写入（依赖 tzt-api，单向）
     └── server.py         #   kline-server 调试服务
 compat-kline-fetcher/     ← 旧 kline-fetcher 兼容壳（3.1.0 终版，纯转发，deprecated）
 └── kline_fetcher/        #   __init__ / fetcher / converter / download / server + _base/.min_kline/.concept_plate/.trend 子模块垫片
+
+外部依赖：tzt-api（行情客户端，含 market.py 市场规则单一事实源）位于独立仓库
+https://github.com/seuzxh/GXQuant（本机 ~/quant_projects/GXQuant）
 ```
 
-数据流：`API → tzt_api（获取+单位转换）→ kline_qlib.download（批量调度）→ kline_qlib.converter（对齐日历+写入bin）`
+数据流：`API → tzt_api（GXQuant，获取+单位转换）→ kline_qlib.download（批量调度）→ kline_qlib.converter（对齐日历+写入bin）`
 
 各模块职责边界：
 
@@ -147,7 +145,7 @@ bin 文件格式（Qlib 标准）：float32 小端序；首元素为该股票数
 
 1. **环境变量**：`KLINE_API_BASE_URL`（API 地址，必填）、`KLINE_CONFIG_PATH`（自定义配置路径）、`QLIB_DATA_DIR`（数据目录）；
 2. **自定义配置文件**：构造 `KLineFetcher(config_path=...)` 传入；
-3. **包内默认配置**：`tzt-api/tzt_api/config/kline_config.yaml`。
+3. **包内默认配置**：GXQuant 仓库 `tzt_api/config/kline_config.yaml`（随 tzt-api 包安装）。
 
 API 地址不进配置文件（避免敏感地址提交入库），只走环境变量或显式覆盖 `api.base_url`。
 
@@ -166,7 +164,6 @@ API 地址不进配置文件（避免敏感地址提交入库），只走环境�
 |------|------|
 | [README.md(index.md) | 使用教程、完整示例、常见问题 |
 | [api-reference.md](api-reference.md) | 全部公开类/方法/参数/返回值参考 |
-| [concept_plate_api.md](concept_plate_api.md) | 概念板块接口深度文档（实测） |
+| [GXQuant docs/concept_plate_api.md](https://github.com/seuzxh/GXQuant/blob/master/docs/concept_plate_api.md) | 概念板块接口深度文档（实测，随 tzt-api 迁至 GXQuant） |
 | [design.md](design.md) | 复权方案、bin 格式、增量追加、日历对齐等设计决策 |
 | [CHANGELOG.md](CHANGELOG.md) | 版本变更记录 |
-| [API/概念板块请求API.md](API/概念板块请求API.md) | 上游接口原始抓包记录 |

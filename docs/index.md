@@ -1,6 +1,6 @@
-# kline-fetcher（monorepo）
+# kline-fetcher（qlib 数据管道）
 
-A 股 K 线数据获取与 qlib 格式转换工具集（v3.1.0 起拆分为双包）：`tzt-api`（行情请求）+ `kline-qlib`（qlib 写入），旧包名 `kline-fetcher` 经 `compat-kline-fetcher` 兼容壳保持可用。基于中焯行情 API 获取行情数据，转换为 Qlib 标准 `.bin` 格式，供量化回测框架使用。无需 Token 认证，支持 `pip install` 安装。
+A 股行情 → qlib bin 格式数据管道：本仓 `kline-qlib`（qlib 写入 + CLI）+ `compat-kline-fetcher`（旧包名兼容壳），行情客户端 `tzt-api` 位于独立仓库 [GXQuant](https://github.com/seuzxh/GXQuant)。基于中焯行情 API 获取行情数据，转换为 Qlib 标准 `.bin` 格式，供量化回测框架使用。无需 Token 认证，支持 `pip install` 安装。
 
 ## 核心能力
 
@@ -16,9 +16,10 @@ A 股 K 线数据获取与 qlib 格式转换工具集（v3.1.0 起拆分为双�
 ## 安装与快速开始
 
 ```bash
-pip install -e ./tzt-api -e ./kline-qlib          # 双包安装
-pip install -e ./compat-kline-fetcher              # 可选：旧包名兼容壳
-pip install 'kline-qlib[server]'                   # 需要在线调试服务时
+pip install git+https://github.com/seuzxh/GXQuant.git  # 先装行情客户端 tzt-api
+pip install -e ./kline-qlib                            # 再装 qlib 写入包
+pip install -e ./compat-kline-fetcher                  # 可选：旧包名兼容壳
+pip install 'kline-qlib[server]'                       # 需要在线调试服务时
 export KLINE_API_BASE_URL=...       # 必填，中焯行情 API 地址
 ```
 
@@ -50,7 +51,7 @@ converter.day_kline_to_qlib("600519", data, mode="append")
 | [架构](architecture.md) | 模块划分、类继承、数据流、存储布局 |
 | [技术方案](design.md) | 复权与 factor、增量追加、日历对齐等设计决策 |
 | [API 参考](api-reference.md) | 全部公开类/方法/参数/返回值 |
-| [概念板块接口](concept_plate_api.md) | 板块接口深度文档（实测） |
+| [GXQuant 概念板块接口](https://github.com/seuzxh/GXQuant/blob/master/docs/concept_plate_api.md) | 板块接口深度文档（随 tzt-api 迁至 GXQuant） |
 | [更新日志](CHANGELOG.md) | 版本变更记录 |
 
 ## 上手路线
