@@ -1,6 +1,6 @@
 # kline-fetcher API 参考
 
-> 适用版本：v3.1.0+（tzt-api 行情客户端位于独立仓库 [GXQuant](https://github.com/seuzxh/GXQuant)，本仓含 `kline-qlib`）。所有公开类与方法的参数、返回值说明。
+> 适用版本：v3.1.0+（tzt-api 行情客户端位于独立仓库 [GXQuotes](https://github.com/seuzxh/GXQuotes)，本仓含 `kline-qlib`）。所有公开类与方法的参数、返回值说明。
 > 设计决策背景见 [design.md](design.md)。方法默认返回 `None` 表示请求失败（不抛异常），日志含失败原因。
 
 ## 目录
@@ -135,7 +135,7 @@ fetch_min_kline(code, freq="1min", count=None, market=None,
 
 ## ConceptPlateFetcher 概念板块
 
-继承 `KLineFetcher` 全部方法，新增（板块市场代码固定 `market=44`）。**完整接口文档（实测响应结构、分页、已知限制）见 [GXQuant 仓库 docs/concept_plate_api.md](https://github.com/seuzxh/GXQuant/blob/master/docs/concept_plate_api.md)**，已知限制摘要：
+继承 `KLineFetcher` 全部方法，新增（板块市场代码固定 `market=44`）。**完整接口文档（实测响应结构、分页、已知限制）见 [GXQuotes 仓库 docs/concept_plate_api.md](https://github.com/seuzxh/GXQuotes/blob/master/docs/concept_plate_api.md)**，已知限制摘要：
 
 - `get_all_concept_plates()` **只返回按涨幅排序的前 30 个**（总数约 390，取全量需按 `start` 翻页，示例见深度文档 1.4）；
 - `get_concept_plate_stocks()` 返回**首项是板块自身**（`block.include=1` 所致），成份股需过滤 `market != 44`；

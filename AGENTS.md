@@ -2,11 +2,11 @@
 
 ## 项目概述
 
-kline-fetcher 仓库是 A 股行情 → Qlib 格式的数据管道：`kline-qlib`（qlib 写入 + CLI）+ `compat-kline-fetcher`（旧包名兼容壳）。行情客户端 `tzt-api`（`import tzt_api`）自 v3.1.0 后迁至**独立仓库 [GXQuant](https://github.com/seuzxh/GXQuant)**（本机 `~/quant_projects/GXQuant`），本仓经 pip 依赖使用（`tzt-api>=1.0.0`），不做本地开发。
+kline-fetcher 仓库是 A 股行情 → Qlib 格式的数据管道：`kline-qlib`（qlib 写入 + CLI）+ `compat-kline-fetcher`（旧包名兼容壳）。行情客户端 `tzt-api`（`import tzt_api`）自 v3.1.0 后迁至**独立仓库 [GXQuotes](https://github.com/seuzxh/GXQuotes)**（本机 `~/quant_projects/GXQuotes`），本仓经 pip 依赖使用（`tzt-api>=1.0.0`），不做本地开发。
 
 ## 中焯官方接口文档（智能体必读）
 
-**需要了解接口信息（Action 功能号、入出参、属性 ID、字段单位、市场代码等）时，优先阅读 [GXQuant 仓库 docs/API/中焯官方文档/README.md](https://github.com/seuzxh/GXQuant/blob/master/docs/API/%E4%B8%AD%E7%84%90%E5%AE%98%E6%96%B9%E6%96%87%E6%A1%A3/README.md)**（本机 `~/quant_projects/GXQuant/docs/API/中焯官方文档/`）—— 该目录存放中焯行情 3.0 官方技术资料的解析版（6 份，可直接检索的 Markdown/文本）与原件（`originals/`），README 含「查什么 → 读哪份」导航和「文档 ↔ 代码」映射速查。中焯资料（官方文档归档、概念板块接口文档、tztapi-agent 指南）已随 tzt-api 包迁至 GXQuant 仓库 `docs/`。
+**需要了解接口信息（Action 功能号、入出参、属性 ID、字段单位、市场代码等）时，优先阅读 [GXQuotes 仓库 docs/API/中焯官方文档/README.md](https://github.com/seuzxh/GXQuotes/blob/master/docs/API/%E4%B8%AD%E7%84%90%E5%AE%98%E6%96%B9%E6%96%87%E6%A1%A3/README.md)**（本机 `~/quant_projects/GXQuotes/docs/API/中焯官方文档/`）—— 该目录存放中焯行情 3.0 官方技术资料的解析版（6 份，可直接检索的 Markdown/文本）与原件（`originals/`），README 含「查什么 → 读哪份」导航和「文档 ↔ 代码」映射速查。中焯资料（官方文档归档、概念板块接口文档、tztapi-agent 指南）已随 tzt-api 包迁至 GXQuotes 仓库 `docs/`。
 
 **接口工作派发规则**：凡是基于中焯行情 API 的接口需求——新建行情接口、校验现有接口用法、参数/响应解析问题——**必须调用子智能体 `tztapi-agent`**（ZCode：Skill `tztapi-agent`，位于 `~/.zcode/skills/tztapi-agent/`；Claude Code：subagent `tztapi-agent`）。该智能体的工作准则：一切结论以官方文档为据（注明出处）、以真实 API 实测定论，未经实测不得答复「确认可用」。
 
@@ -23,12 +23,12 @@ kline-qlib/               ← qlib 写入包（CLI: kline-download / kline-serve
 compat-kline-fetcher/     ← 旧 kline-fetcher 兼容壳（3.1.0 终版，纯转发，deprecated）
 └── kline_fetcher/        #   __init__ / fetcher / converter / download / server + _base/.min_kline/.concept_plate/.trend 子模块垫片
 
-外部依赖：tzt-api（行情客户端，独立仓库 GXQuant：github.com/seuzxh/GXQuant，本机 ~/quant_projects/GXQuant）
+外部依赖：tzt-api（行情客户端，独立仓库 GXQuotes：github.com/seuzxh/GXQuotes，本机 ~/quant_projects/GXQuotes）
 ```
 
-数据流：`API → tzt_api（GXQuant，获取+单位转换）→ kline_qlib.download（批量调度）→ kline_qlib.converter（对齐日历+写入bin）`
+数据流：`API → tzt_api（GXQuotes，获取+单位转换）→ kline_qlib.download（批量调度）→ kline_qlib.converter（对齐日历+写入bin）`
 
-**类继承结构**（位于 GXQuant 仓库 tzt_api 包）：
+**类继承结构**（位于 GXQuotes 仓库 tzt_api 包）：
 ```
 KLineFetcher (tzt_api/_base.py)             ← 共享底座 + 日K方法
   ├── MinKLineFetcher (min_kline.py)            ← 继承，加分钟K方法
@@ -38,7 +38,7 @@ KLineFetcher (tzt_api/_base.py)             ← 共享底座 + 日K方法
 
 ## 核心类
 
-### KLineFetcher (GXQuant 仓库 tzt_api/_base.py) — 基类
+### KLineFetcher (GXQuotes 仓库 tzt_api/_base.py) — 基类
 
 中焯行情 API 客户端基类，提供共享底座（HTTP 请求、限流重试、参数构造、字段单位换算、K线解析）和日K线方法。自动推断市场代码、限流、重试。
 
@@ -97,9 +97,9 @@ fetcher.fetch_day_kline("sh000300")                  # ✅ 沪深300（前缀，
 **其他注意**：
 - 指数无复权概念，`adjust` 参数对指数无意义（传 `"none"` 或默认均可，实测不影响返回）
 - 指数写入 qlib 时目录按推断市场命名：`sh000300`（沪深300）、`sz399006`（创业板指）
-- 新增指数支持：向 GXQuant 仓库 `tzt_api/market.py` 的 `INDEX_CODE_MAP` 添加 `{代码: (名称, market)}`，`infer_market` / `code_to_qlib_dir` / `is_index` 自动生效
+- 新增指数支持：向 GXQuotes 仓库 `tzt_api/market.py` 的 `INDEX_CODE_MAP` 添加 `{代码: (名称, market)}`，`infer_market` / `code_to_qlib_dir` / `is_index` 自动生效
 
-### MinKLineFetcher (GXQuant 仓库 tzt_api/min_kline.py) — 分钟K线
+### MinKLineFetcher (GXQuotes 仓库 tzt_api/min_kline.py) — 分钟K线
 
 继承 `KLineFetcher`，专注分钟K线特有的：freq→klinetype 映射、locator 翻页、starttime 定位。
 
@@ -111,9 +111,9 @@ fetcher.fetch_day_kline("sh000300")                  # ✅ 沪深300（前缀，
 
 > 返回数据自带 `date`/`time` 字段，客户端可自行按时间切片。
 
-### ConceptPlateFetcher (GXQuant 仓库 tzt_api/concept_plate.py) — 概念板块
+### ConceptPlateFetcher (GXQuotes 仓库 tzt_api/concept_plate.py) — 概念板块
 
-继承 `KLineFetcher`，封装概念板块相关接口。**完整接口文档（含请求参数、响应字段、单位换算）见 [GXQuant 仓库 docs/concept_plate_api.md](https://github.com/seuzxh/GXQuant/blob/master/docs/concept_plate_api.md)**。
+继承 `KLineFetcher`，封装概念板块相关接口。**完整接口文档（含请求参数、响应字段、单位换算）见 [GXQuotes 仓库 docs/concept_plate_api.md](https://github.com/seuzxh/GXQuotes/blob/master/docs/concept_plate_api.md)**。
 
 **关键方法**：
 
@@ -130,7 +130,7 @@ fetcher.fetch_day_kline("sh000300")                  # ✅ 沪深300（前缀，
 - `get_concept_plate_stocks()` 返回**首项是板块自身**（`block.include=1` 所致，官方文档确认「包含板块指数则放行情列表首位」），成份股需过滤 `market != 44`；响应 `max` 字段为成份股总数
 - `get_stock_concept_plates()` 旧实现（抓包复刻的 10000 请求）实测不可用；**已修复**：改用官方关联属性 `900|901|923`（CoIndBlkIdx=行业 / CoBlkIdx=全部隶属板块 / RegionBlkIdx=地域，出自《行情3.0股票属性ID》），一次请求返回全部板块并按 900/923 交叉标注 `type`；`plate_type="concept"/"industry"/"region"` 可过滤，默认返回全部。`market` 现为可选（自动推断，注意 000xxx 裸码指数优先歧义）
 
-### TrendFetcher (GXQuant 仓库 tzt_api/trend.py) — 分时数据
+### TrendFetcher (GXQuotes 仓库 tzt_api/trend.py) — 分时数据
 
 继承 `KLineFetcher`，专注分时数据获取：集合竞价（CallTrend，09:15-09:25）和盘中分时（TrendOp，09:30-15:00）。
 
@@ -359,7 +359,7 @@ kline:
 | 变量 | 用途 | 默认值 |
 |------|------|--------|
 | `KLINE_API_BASE_URL` | **中焯行情 API 地址（必填）** | 无，未配置时报 EnvironmentError |
-| `KLINE_CONFIG_PATH` | 自定义配置文件路径 | GXQuant 仓库 tzt-api 包内 `config/kline_config.yaml` |
+| `KLINE_CONFIG_PATH` | 自定义配置文件路径 | GXQuotes 仓库 tzt-api 包内 `config/kline_config.yaml` |
 | `QLIB_DATA_DIR` | Qlib 数据目录 | `/root/Projects/0.qlib_pro/qlib_data` |
 
 ## 版本变更记录
@@ -368,7 +368,7 @@ kline:
 
 关键破坏性变更速记：
 
-- **（未发布）tzt-api 迁出**：行情客户端整体迁至独立仓库 [GXQuant](https://github.com/seuzxh/GXQuant)；本仓保留 kline-qlib + 兼容壳，`import tzt_api` 用法不变（经 pip 依赖）
+- **（未发布）tzt-api 迁出**：行情客户端整体迁至独立仓库 [GXQuotes](https://github.com/seuzxh/GXQuotes)；本仓保留 kline-qlib + 兼容壳，`import tzt_api` 用法不变（经 pip 依赖）
 - **v3.1.0（拆分）**：monorepo 双包——tzt-api（行情请求）+ kline-qlib（qlib 写入）+ kline-fetcher 兼容壳；市场规则收敛 tzt_api.market 单一事实源
 - **v3.0.0**：架构拆分——单文件 `fetcher.py` 拆分为 `_base/min_kline/concept_plate` 继承体系，概念板块/分钟K方法移入子类（旧导入路径保留兼容垫片）
 - **v2.0.0**：默认后复权存储 + `factor` 字段（还原原始价：`后复权价/factor`），已有数据需全量替换

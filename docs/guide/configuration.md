@@ -1,6 +1,6 @@
 # 配置
 
-配置分三级：**环境变量 > 自定义配置文件 > 包内默认配置**（GXQuant 仓库 `tzt_api/config/kline_config.yaml`，随 tzt-api 包安装）。
+配置分三级：**环境变量 > 自定义配置文件 > 包内默认配置**（GXQuotes 仓库 `tzt_api/config/kline_config.yaml`，随 tzt-api 包安装）。
 
 ## 配置文件
 

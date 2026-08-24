@@ -6,7 +6,7 @@
 
 ### 🔧 重构
 
-- **tzt-api 迁出为独立仓库 [GXQuant](https://github.com/seuzxh/GXQuant)**（2026-08-24，自 9b9613c 整体迁出）：行情客户端（4 个 Fetcher + `market.py` 单一事实源）及其测试、中焯官方文档归档（`docs/API/中焯官方文档/`）、概念板块接口文档（`concept_plate_api.md`）、原始抓包记录、tztapi-agent 指南均迁至 GXQuant。本仓保留 `kline-qlib` + `compat-kline-fetcher`，经 pip 依赖使用 `tzt-api>=1.0.0`（`import tzt_api` 用法不变）；mkdocs 导航移除已迁文档条目，相关链接改指 GXQuant 仓库
+- **tzt-api 迁出为独立仓库 [GXQuotes](https://github.com/seuzxh/GXQuotes)**（2026-08-24，自 9b9613c 整体迁出）：行情客户端（4 个 Fetcher + `market.py` 单一事实源）及其测试、中焯官方文档归档（`docs/API/中焯官方文档/`）、概念板块接口文档（`concept_plate_api.md`）、原始抓包记录、tztapi-agent 指南均迁至 GXQuotes。本仓保留 `kline-qlib` + `compat-kline-fetcher`，经 pip 依赖使用 `tzt-api>=1.0.0`（`import tzt_api` 用法不变）；mkdocs 导航移除已迁文档条目，相关链接改指 GXQuotes 仓库
 
 ## [3.1.0] - 2026-08-23
 

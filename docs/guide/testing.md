@@ -2,7 +2,7 @@
 
 ## 测试
 
-项目测试随各包独立存放（`kline-qlib/tests/`、`compat-kline-fetcher/tests/`；行情客户端 tzt-api 的测试已随包迁至 [GXQuant](https://github.com/seuzxh/GXQuant) 仓库 `tests/`），分两类。
+项目测试随各包独立存放（`kline-qlib/tests/`、`compat-kline-fetcher/tests/`；行情客户端 tzt-api 的测试已随包迁至 [GXQuotes](https://github.com/seuzxh/GXQuotes) 仓库 `tests/`），分两类。
 
 ### 单元测试（默认运行，无需 API）
 
@@ -22,10 +22,10 @@ cd compat-kline-fetcher && pytest  # 兼容壳转发测试
 
 ### 集成测试（需真实 API，默认跳过）
 
-集成测试（行情类）已随 tzt-api 迁至 GXQuant 仓库：
+集成测试（行情类）已随 tzt-api 迁至 GXQuotes 仓库：
 
 ```bash
-git clone https://github.com/seuzxh/GXQuant.git && cd GXQuant
+git clone https://github.com/seuzxh/GXQuotes.git && cd GXQuotes
 export KLINE_API_BASE_URL=http://<your-api-host>:<port>
 pytest -m integration       # 显式启用集成测试
 ```
@@ -64,4 +64,4 @@ from tzt_api import KLineFetcher, MinKLineFetcher, ConceptPlateFetcher
 | 复权方式 | 前复权/后复权可选 | 后复权（cqtype=2，v2.0.0 起）+ factor 字段 |
 | 高频分页 | 不支持 | locator 自动翻页 |
 | 大范围日K | 支持 | 分段下载（每段 ≤1500 条） |
-| 安装方式 | 项目内模块 | `pip install`（GXQuant + 本仓 kline-qlib） |
+| 安装方式 | 项目内模块 | `pip install`（GXQuotes + 本仓 kline-qlib） |
