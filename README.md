@@ -80,7 +80,7 @@ kline-qlib/               ← 包②：qlib 写入（依赖 tzt-api，单向）
     └── server.py         #   kline-server 调试服务
 compat-kline-fetcher/     ← 旧 kline-fetcher 兼容壳（3.1.0 终版，纯转发，deprecated）
 ├── tests/                #   兼容壳转发测试
-└── kline_fetcher/        #   __init__ / fetcher / converter / download / server 垫片
+└── kline_fetcher/        #   __init__ / fetcher / converter / download / server + 子模块垫片
 docs/                     # 项目文档（architecture/design/api-reference/CHANGELOG 等）
 ```
 

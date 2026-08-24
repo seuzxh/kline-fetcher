@@ -49,7 +49,7 @@ kline-qlib/               ← 包②：qlib 写入（依赖 tzt-api，单向）
     ├── download.py       #   批量下载编排 + CLI
     └── server.py         #   kline-server 调试服务
 compat-kline-fetcher/     ← 旧 kline-fetcher 兼容壳（3.1.0 终版，纯转发，deprecated）
-└── kline_fetcher/        #   __init__ / fetcher / converter / download / server 垫片
+└── kline_fetcher/        #   __init__ / fetcher / converter / download / server + _base/.min_kline/.concept_plate/.trend 子模块垫片
 ```
 
 数据流：`API → tzt_api（获取+单位转换）→ kline_qlib.download（批量调度）→ kline_qlib.converter（对齐日历+写入bin）`
@@ -72,12 +72,12 @@ compat-kline-fetcher/     ← 旧 kline-fetcher 兼容壳（3.1.0 终版，纯�
 v3.0.0 将原 792 行单文件 `fetcher.py` 拆分为继承体系：
 
 ```
-KLineFetcher (_base.py)                  ← 共享底座 + 日K方法
+KLineFetcher (tzt_api/_base.py)         ← 共享底座 + 日K方法
   ├── MinKLineFetcher (min_kline.py)     ← + 分钟K方法
   ├── ConceptPlateFetcher (concept_plate.py) ← + 概念板块方法
   └── TrendFetcher (trend.py)            ← + 分时数据方法
 
-KLineToQlib (converter.py)               ← 独立类，不继承（转换层）
+KLineToQlib (kline_qlib/converter.py)    ← 独立类，不继承（转换层）
 ```
 
 **拆分动机**：

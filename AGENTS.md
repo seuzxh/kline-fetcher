@@ -29,22 +29,22 @@ kline-qlib/               ← 包②：qlib 写入（依赖 tzt-api，单向）
     ├── download.py       #   批量下载编排 + CLI
     └── server.py         #   kline-server 调试服务
 compat-kline-fetcher/     ← 旧 kline-fetcher 兼容壳（3.1.0 终版，纯转发，deprecated）
-└── kline_fetcher/        #   __init__ / fetcher / converter / download / server 垫片
+└── kline_fetcher/        #   __init__ / fetcher / converter / download / server + _base/.min_kline/.concept_plate/.trend 子模块垫片
 ```
 
 数据流：`API → tzt_api（获取+单位转换）→ kline_qlib.download（批量调度）→ kline_qlib.converter（对齐日历+写入bin）`
 
-**类继承结构**（v2.1.0）：
+**类继承结构**（v2.1.0，现位于 tzt-api 包）：
 ```
-KLineFetcher (_base.py)               ← 共享底座 + 日K方法
-  ├── MinKLineFetcher (min_kline.py)       ← 继承，加分钟K方法
-  ├── ConceptPlateFetcher (concept_plate.py) ← 继承，加概念板块方法
-  └── TrendFetcher (trend.py)              ← 继承，加分时数据方法
+KLineFetcher (tzt-api/tzt_api/_base.py)        ← 共享底座 + 日K方法
+  ├── MinKLineFetcher (min_kline.py)            ← 继承，加分钟K方法
+  ├── ConceptPlateFetcher (concept_plate.py)    ← 继承，加概念板块方法
+  └── TrendFetcher (trend.py)                   ← 继承，加分时数据方法
 ```
 
 ## 核心类
 
-### KLineFetcher (_base.py) — 基类
+### KLineFetcher (tzt-api/tzt_api/_base.py) — 基类
 
 中焯行情 API 客户端基类，提供共享底座（HTTP 请求、限流重试、参数构造、字段单位换算、K线解析）和日K线方法。自动推断市场代码、限流、重试。
 
@@ -105,7 +105,7 @@ fetcher.fetch_day_kline("sh000300")                  # ✅ 沪深300（前缀，
 - 指数写入 qlib 时目录按推断市场命名：`sh000300`（沪深300）、`sz399006`（创业板指）
 - 新增指数支持：向 `tzt-api/tzt_api/market.py` 的 `INDEX_CODE_MAP` 添加 `{代码: (名称, market)}`，`infer_market` / `code_to_qlib_dir` / `is_index` 自动生效
 
-### MinKLineFetcher (min_kline.py) — 分钟K线
+### MinKLineFetcher (tzt-api/tzt_api/min_kline.py) — 分钟K线
 
 继承 `KLineFetcher`，专注分钟K线特有的：freq→klinetype 映射、locator 翻页、starttime 定位。
 
@@ -117,7 +117,7 @@ fetcher.fetch_day_kline("sh000300")                  # ✅ 沪深300（前缀，
 
 > 返回数据自带 `date`/`time` 字段，客户端可自行按时间切片。
 
-### ConceptPlateFetcher (concept_plate.py) — 概念板块
+### ConceptPlateFetcher (tzt-api/tzt_api/concept_plate.py) — 概念板块
 
 继承 `KLineFetcher`，封装概念板块相关接口。**完整接口文档（含请求参数、响应字段、单位换算）见 [docs/concept_plate_api.md](docs/concept_plate_api.md)**。
 
@@ -136,7 +136,7 @@ fetcher.fetch_day_kline("sh000300")                  # ✅ 沪深300（前缀，
 - `get_concept_plate_stocks()` 返回**首项是板块自身**（`block.include=1` 所致，官方文档确认「包含板块指数则放行情列表首位」），成份股需过滤 `market != 44`；响应 `max` 字段为成份股总数
 - `get_stock_concept_plates()` 旧实现（抓包复刻的 10000 请求）实测不可用；**已修复**：改用官方关联属性 `900|901|923`（CoIndBlkIdx=行业 / CoBlkIdx=全部隶属板块 / RegionBlkIdx=地域，出自《行情3.0股票属性ID》），一次请求返回全部板块并按 900/923 交叉标注 `type`；`plate_type="concept"/"industry"/"region"` 可过滤，默认返回全部。`market` 现为可选（自动推断，注意 000xxx 裸码指数优先歧义）
 
-### TrendFetcher (trend.py) — 分时数据
+### TrendFetcher (tzt-api/tzt_api/trend.py) — 分时数据
 
 继承 `KLineFetcher`，专注分时数据获取：集合竞价（CallTrend，09:15-09:25）和盘中分时（TrendOp，09:30-15:00）。
 
@@ -235,7 +235,7 @@ from kline_fetcher.fetcher import KLineFetcher, MARKET_CODE_MAP  # 仍可用
 
 **市场代码**：`sh=1`, `sz=0`, `bj=103`
 
-### KLineToQlib (converter.py)
+### KLineToQlib (kline-qlib/kline_qlib/converter.py)
 
 将K线数据转换为 Qlib bin 格式。管理交易日历、bin 文件读写、增量追加。
 
@@ -275,7 +275,7 @@ from kline_fetcher.fetcher import KLineFetcher, MARKET_CODE_MAP  # 仍可用
 - 新数据完全在旧数据之前：新数据在前
 - 新旧重叠：按位置合并，新数据覆盖旧数据重叠部分
 
-### download.py
+### download.py (kline-qlib/kline_qlib/download.py)
 
 批量下载入口，提供 CLI 和函数调用两种方式。
 
@@ -365,7 +365,7 @@ kline:
 | 变量 | 用途 | 默认值 |
 |------|------|--------|
 | `KLINE_API_BASE_URL` | **中焯行情 API 地址（必填）** | 无，未配置时报 EnvironmentError |
-| `KLINE_CONFIG_PATH` | 自定义配置文件路径 | 包内 `config/kline_config.yaml` |
+| `KLINE_CONFIG_PATH` | 自定义配置文件路径 | tzt-api 包内 `config/kline_config.yaml` |
 | `QLIB_DATA_DIR` | Qlib 数据目录 | `/root/Projects/0.qlib_pro/qlib_data` |
 
 ## 版本变更记录
